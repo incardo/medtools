@@ -90,10 +90,12 @@ describe('regole per anno (domanda giornaliera)', () => {
     }
   });
 
-  it('OBI del V anno anche nel weekend', () => {
+  it('OBI del V anno anche nel weekend, una sola persona per 12h', () => {
     const d = buildDemand('2026-11-08', ctx); // domenica
-    expect(d.find((p) => p.slot === 'OBI_M')!.years).toEqual([5]);
-    expect(d.find((p) => p.slot === 'OBI_P')!.years).toEqual([5]);
+    const obi = d.find((p) => p.slot === 'OBI_M')!;
+    expect([obi.years, obi.alsoSlots]).toEqual([[5], ['OBI_P']]);
+    expect(d.find((p) => p.slot === 'OBI_P')).toBeUndefined();
+    expect(buildDemand('2026-11-03', ctx).find((p) => p.slot === 'OBI_M')!.alsoSlots).toEqual([]); // mar: M e P separati
   });
 
   it('ruota comune solo come ripiego per le notti dal lunedì al venerdì', () => {
@@ -136,6 +138,7 @@ describe('motore', () => {
       ['PEDU_M', 'PEDU_P'],
       ['PS_ALTI_M', 'PS_ALTI_P'],
       ['PS_VERDI_M', 'PS_VERDI_P'],
+      ['OBI_M', 'OBI_P'],
     ].map((x) => x.join());
     for (const list of byPersonDay.values()) {
       if (list.length === 1) continue;
@@ -153,6 +156,17 @@ describe('motore', () => {
         expect(who(d, 'PS_ALTI_P')).toBe(who(d, 'PS_ALTI_M'));
       }
       expect(who(sun, 'PS_ALTI_M')).not.toBe(who(sat, 'PS_ALTI_M'));
+    }
+  });
+
+  it('il V anno può fare 12h il sabato e la notte di domenica', () => {
+    for (const s of ['PS_ALTI', 'OBI'] as const) {
+      const ws = validate(input, [
+        { date: '2026-11-07', slot: `${s}_M`, idx: 0, who: 'alfa', source: 'manual' },
+        { date: '2026-11-07', slot: `${s}_P`, idx: 0, who: 'alfa', source: 'manual' },
+        { date: '2026-11-08', slot: 'PS_NOTTE', idx: 0, who: 'alfa', source: 'manual' },
+      ]);
+      expect(ws.filter((w) => w.personId)).toEqual([]);
     }
   });
 

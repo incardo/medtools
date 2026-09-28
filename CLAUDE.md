@@ -106,7 +106,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 
 - PS alti mattina (1 turno) e PS alti pomeriggio (1 turno); nel weekend un'unica persona per 12h, diversa tra sabato e domenica (vedi "Weekend in PS").
 - **Lunedì e venerdì pomeriggio** PS **bassi** (verdi) al posto degli alti. **[detto]**
-- OBI mattina **e** pomeriggio, **anche nel weekend**. **[detto]**
+- OBI mattina **e** pomeriggio, **anche nel weekend**. **[detto]** Nel weekend l'OBI lo copre **una sola persona per 12h** (mattina + pomeriggio). **[detto]**
 - 5 notti PS nel mese, suggerite dal motore in modo **bilanciato** tra le persone del V anno. **[detto]**
 - A fine anno (ultimi giorni di ottobre) non c'è più: i suoi turni li coprono IV e III anno.
 - Eventuali giorni d'esame (es. 5 ottobre 2026) sono **parametri del mese**, non regole fisse (vedi sezione 8).
@@ -171,6 +171,8 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
 4. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
+
+Un V anno che fa 12h il sabato (PS alti o OBI) può fare la notte di domenica: non è un errore. **[detto]**
 
 ---
 

@@ -91,8 +91,8 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
         ? { slot: 'PS_NOTTE', idx: 0, years: [4] }
         : { slot: 'PS_NOTTE', idx: 0, years: V, monthlyCap: ctx.vPresent ? ctx.vNightsPerPerson : undefined },
     );
-    drafts.push({ slot: 'OBI_M', idx: 0, years: V });
-    drafts.push({ slot: 'OBI_P', idx: 0, years: V });
+    // OBI 12h: una sola persona per mattina e pomeriggio
+    drafts.push({ slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'] });
     // Ped Urg 12h: una sola persona per mattina e pomeriggio
     drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'] });
   } else {
