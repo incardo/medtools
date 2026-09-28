@@ -241,6 +241,15 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
       if (pos.notPrevDay && who && who !== RUOTA && board.slots(who, addDays(pos.date, -1)).includes(pos.slot)) {
         out.push({ date: pos.date, slot: pos.slot, idx: pos.idx, personId: who, level: 'error', message: 'Stessa persona del giorno prima: la domenica cambia' });
       }
+      // Turno da 12h: tutte le fasce alla stessa persona.
+      for (const s of pos.alsoSlots) {
+        const other = byKey.get(keyOf({ ...pos, slot: s }))?.who;
+        if (who && other && other !== who) {
+          for (const [slot, p] of [[pos.slot, who], [s, other]] as const) {
+            out.push({ date: pos.date, slot, idx: pos.idx, personId: p, level: 'error', message: 'Turno da 12h: mattina e pomeriggio alla stessa persona' });
+          }
+        }
+      }
       if (pos.manualOnly || who) continue;
       out.push({ date: pos.date, slot: pos.slot, idx: pos.idx, level: 'warn', message: 'Nessuno assegnato' });
     }

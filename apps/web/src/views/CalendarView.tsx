@@ -252,8 +252,15 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                             value={cell?.who ?? ''}
                             onChange={(e) =>
                               setCells((c) => {
-                                if (e.target.value) c[k] = { who: e.target.value, source: 'manual' };
-                                else delete c[k];
+                                // Turno da 12h: la scelta vale per tutte le fasce dello stesso posto.
+                                const main = pos ?? mirror;
+                                const keys = main?.alsoSlots.length
+                                  ? [main.slot, ...main.alsoSlots].map((slot) => keyOf({ date, slot, idx: main.idx }))
+                                  : [k];
+                                for (const key of keys) {
+                                  if (e.target.value) c[key] = { who: e.target.value, source: 'manual' };
+                                  else delete c[key];
+                                }
                                 return c;
                               })
                             }

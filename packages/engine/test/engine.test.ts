@@ -170,6 +170,18 @@ describe('motore', () => {
     }
   });
 
+  it('segnala un turno da 12h diviso tra due persone', () => {
+    const ws = validate(input, [
+      { date: '2026-11-07', slot: 'OBI_M', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-11-07', slot: 'OBI_P', idx: 0, who: 'bravo', source: 'manual' },
+    ]);
+    const errs = ws.filter((w) => w.level === 'error').map((w) => [w.slot, w.personId]);
+    expect(errs).toEqual([
+      ['OBI_M', 'alfa'],
+      ['OBI_P', 'bravo'],
+    ]);
+  });
+
   it('segnala il V anno uguale sabato e domenica agli alti', () => {
     const ws = validate(input, [
       { date: '2026-11-07', slot: 'PS_ALTI_M', idx: 0, who: 'alfa', source: 'manual' },
