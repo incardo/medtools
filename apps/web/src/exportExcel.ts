@@ -147,7 +147,7 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
       }
       x.value = text;
       x.fill = fill(bg);
-      x.font = { size: 10 };
+      x.font = { size: 10, bold: weekend };
       x.alignment = { horizontal: 'center', vertical: 'middle', shrinkToFit: true };
       x.border = groupStarts.has(j + 2) ? { ...box, left: medium } : box;
     });
