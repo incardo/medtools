@@ -283,6 +283,15 @@ th.day {
   padding: 3px 2px;
   font-size: 13px;
 }
+.cal td.ruota-name input {
+  border: none;
+  background: transparent;
+  width: 118px;
+  padding: 3px 4px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+}
 .cal td.unused {
   background-image: repeating-linear-gradient(45deg, transparent 0 6px, var(--border) 6px 7px);
 }

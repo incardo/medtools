@@ -154,6 +154,7 @@ III, IV e V anno sono persone con un nome (fittizio, per ora). I vincoli valgono
 - Ruota comune copre **solo le notti in PS dal lunedì al venerdì**. **[detto]** (sostituisce la regola precedente "non può coprire Ped Urg né OBI")
 - Nel motore è il ripiego per le notti lun–ven quando nessuno dell'anno previsto è disponibile. **[assunzione]**
 - La ruota comune **non entra** nel bilanciamento né nella panoramica per medico. **[detto]**
+- Nel calendario, accanto a "Notte PS", c'è una colonna **"Ruota comune"** dove si scrive a mano il nome (testo libero, solo notti lun–ven). **[detto]** Il motore non la legge; finisce nell'export CSV.
 
 ---
 

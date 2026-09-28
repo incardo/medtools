@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   COLUMNS,
   RUOTA,
@@ -24,7 +24,7 @@ import { dayLabel, monthLabel, type ViewProps } from '../format';
 const HEADERS: { group: string; cols: string[] }[] = [
   { group: 'PS mattina', cols: ['Alti', 'Alti', 'Verdi'] },
   { group: 'PS pomeriggio', cols: ['Alti', 'Alti', 'Verdi'] },
-  { group: 'Notte', cols: ['PS'] },
+  { group: 'Notte', cols: ['PS', 'Ruota comune'] },
   { group: 'OBI', cols: ['M', 'P'] },
   { group: 'Ped Urg', cols: ['M', 'M', 'P'] },
   { group: 'Altro', cols: ['Bambi', 'Amb'] },
@@ -85,6 +85,17 @@ export function CalendarView({ data, setData, month }: ViewProps) {
   const setCells = (fn: (c: Record<string, Cell>) => Record<string, Cell>) =>
     setData((d) => ({ ...d, assignments: { ...d.assignments, [month]: fn({ ...(d.assignments[month] ?? {}) }) } }));
 
+  const ruotaNames = data.ruotaNames ?? {};
+  /** Nomi della ruota comune già usati, suggeriti mentre si scrive. */
+  const ruotaKnown = useMemo(() => [...new Set(Object.values(data.ruotaNames ?? {}))].sort(), [data.ruotaNames]);
+  const setRuotaName = (date: string, name: string) =>
+    setData((d) => {
+      const next = { ...(d.ruotaNames ?? {}) };
+      if (name.trim()) next[date] = name.trim();
+      else delete next[date];
+      return { ...d, ruotaNames: next };
+    });
+
   const generate = () => {
     setBusy(true);
     // lascia ridisegnare il pulsante prima del calcolo
@@ -101,12 +112,19 @@ export function CalendarView({ data, setData, month }: ViewProps) {
   };
 
   const exportCsv = () => {
-    const header = ['Data', ...COLUMNS.map((c) => `${SLOT_INFO[c.slot].label}${c.idx ? ' 2' : ''}`)];
+    const header = [
+      'Data',
+      ...COLUMNS.flatMap((c) => {
+        const label = `${SLOT_INFO[c.slot].label}${c.idx ? ' 2' : ''}`;
+        return c.slot === 'PS_NOTTE' ? [label, 'Ruota comune'] : [label];
+      }),
+    ];
     const rows = daysOfMonth(month).map((date) => [
       date,
-      ...COLUMNS.map((c) => {
+      ...COLUMNS.flatMap((c) => {
         const who = cells[keyOf({ date, ...c })]?.who;
-        return who === RUOTA ? 'Ruota comune' : (names.get(who ?? '') ?? '');
+        const name = who === RUOTA ? 'Ruota comune' : (names.get(who ?? '') ?? '');
+        return c.slot === 'PS_NOTTE' ? [name, ruotaNames[date] ?? ''] : [name];
       }),
     ]);
     const csv = [header, ...rows].map((r) => r.map((x) => `"${x.replace(/"/g, '""')}"`).join(';')).join('\n');
@@ -130,7 +148,12 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         </button>
         <button
           onClick={() => {
-            if (confirm('Svuotare tutto il mese, comprese le modifiche manuali?')) setCells(() => ({}));
+            if (!confirm('Svuotare tutto il mese, comprese le modifiche manuali e i nomi della ruota comune?')) return;
+            setCells(() => ({}));
+            setData((d) => ({
+              ...d,
+              ruotaNames: Object.fromEntries(Object.entries(d.ruotaNames ?? {}).filter(([date]) => !date.startsWith(month))),
+            }));
           }}
         >
           Svuota mese
@@ -223,42 +246,61 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                     const listed =
                       !cell?.who || (cell.who === RUOTA && ruotaCanCover(col.slot, date)) || groups.some((g) => g.opts.some((x) => x.person.id === cell.who));
                     return (
-                      <td key={k} className={cls} title={title}>
-                        <select
-                          value={cell?.who ?? ''}
-                          onChange={(e) =>
-                            setCells((c) => {
-                              if (e.target.value) c[k] = { who: e.target.value, source: 'manual' };
-                              else delete c[k];
-                              return c;
-                            })
-                          }
-                        >
-                          <option value="">—</option>
-                          {!listed && (
-                            <option value={cell!.who}>
-                              {cell!.who === RUOTA ? 'Ruota comune' : (names.get(cell!.who) ?? '?')} (fuori regola)
-                            </option>
-                          )}
-                          {ruotaCanCover(col.slot, date) && <option value={RUOTA}>Ruota comune</option>}
-                          {groups.map(({ y, opts }) => {
-                            if (!opts.length) return null;
-                            return (
-                              <optgroup key={y} label={`${YEAR_LABEL[y]} anno`}>
-                                {opts.map(({ person }) => {
-                                  const why = roster.unavailable(person.id, date, SLOT_INFO[col.slot].fascia);
-                                  return (
-                                    <option key={person.id} value={person.id}>
-                                      {person.name}
-                                      {why ? ` (${why})` : ''}
-                                    </option>
-                                  );
-                                })}
-                              </optgroup>
-                            );
-                          })}
-                        </select>
-                      </td>
+                      <Fragment key={k}>
+                        <td className={cls} title={title}>
+                          <select
+                            value={cell?.who ?? ''}
+                            onChange={(e) =>
+                              setCells((c) => {
+                                if (e.target.value) c[k] = { who: e.target.value, source: 'manual' };
+                                else delete c[k];
+                                return c;
+                              })
+                            }
+                          >
+                            <option value="">—</option>
+                            {!listed && (
+                              <option value={cell!.who}>
+                                {cell!.who === RUOTA ? 'Ruota comune' : (names.get(cell!.who) ?? '?')} (fuori regola)
+                              </option>
+                            )}
+                            {ruotaCanCover(col.slot, date) && <option value={RUOTA}>Ruota comune</option>}
+                            {groups.map(({ y, opts }) => {
+                              if (!opts.length) return null;
+                              return (
+                                <optgroup key={y} label={`${YEAR_LABEL[y]} anno`}>
+                                  {opts.map(({ person }) => {
+                                    const why = roster.unavailable(person.id, date, SLOT_INFO[col.slot].fascia);
+                                    return (
+                                      <option key={person.id} value={person.id}>
+                                        {person.name}
+                                        {why ? ` (${why})` : ''}
+                                      </option>
+                                    );
+                                  })}
+                                </optgroup>
+                              );
+                            })}
+                          </select>
+                        </td>
+                        {col.slot === 'PS_NOTTE' && (
+                          <td
+                            className={`cell ruota-name ${ruotaCanCover(col.slot, date) ? (ruotaNames[date] ? 'ruota' : '') : 'unused'}`}
+                            title={ruotaCanCover(col.slot, date) ? 'Ruota comune: scrivi il nome a mano' : 'La ruota comune copre solo le notti dal lunedì al venerdì'}
+                          >
+                            {ruotaCanCover(col.slot, date) && (
+                              <input
+                                key={`${date}|${ruotaNames[date] ?? ''}`}
+                                list="ruota-names"
+                                defaultValue={ruotaNames[date] ?? ''}
+                                placeholder="—"
+                                onBlur={(e) => e.target.value.trim() !== (ruotaNames[date] ?? '') && setRuotaName(date, e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                              />
+                            )}
+                          </td>
+                        )}
+                      </Fragment>
                     );
                   })}
                   <td className="free">
@@ -278,6 +320,11 @@ export function CalendarView({ data, setData, month }: ViewProps) {
             })}
           </tbody>
         </table>
+        <datalist id="ruota-names">
+          {ruotaKnown.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
       </div>
       <p className="hint">
         L'ultima colonna mostra chi è libero quel giorno (attivo, non già in turno, non in smonto dopo la notte) e in quali fasce: M

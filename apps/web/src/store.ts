@@ -22,6 +22,8 @@ export interface Cell {
 
 export interface AppData {
   version: 1;
+  /** Versione dei dati di esempio: se cambia, i dati salvati nel browser vengono sostituiti. */
+  seed?: number;
   people: Person[];
   enrollments: Enrollment[];
   academicYears: AcademicYear[];
@@ -30,9 +32,13 @@ export interface AppData {
   monthParams: Record<string, MonthParams>;
   /** mese â†’ chiave `${date}|${slot}#${idx}` â†’ cella */
   assignments: Record<string, Record<string, Cell>>;
+  /** Notte PS: nomi della ruota comune scritti a mano, per data (fuori anagrafica e fuori bilanciamento). */
+  ruotaNames?: Record<string, string>;
 }
 
 const STORAGE_KEY = 'medtools:v1';
+/** 2 = organico di esempio V 10, IV 8, III 6. Finché ci sono solo nomi fittizi, alzarlo resetta i dati salvati. */
+const SEED_VERSION = 2;
 
 export const YEAR_LABEL: Record<Year, string> = { 3: 'III', 4: 'IV', 5: 'V' };
 
@@ -65,6 +71,7 @@ export function seedData(): AppData {
   };
   return {
     version: 1,
+    seed: SEED_VERSION,
     people,
     enrollments,
     academicYears: [{ id: '2026/27', start: '2026-11-01', end: '2027-10-31', vLastDay: '2027-10-27' }],
@@ -77,7 +84,8 @@ export function seedData(): AppData {
 function load(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as AppData;
+    const saved = raw ? (JSON.parse(raw) as AppData) : null;
+    if (saved && saved.seed === SEED_VERSION) return saved;
   } catch {
     /* storage non disponibile: si riparte dai dati di esempio */
   }
