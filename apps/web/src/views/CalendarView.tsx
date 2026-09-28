@@ -24,7 +24,7 @@ import { dayLabel, monthLabel, type ViewProps } from '../format';
 const HEADERS: { group: string; cols: string[] }[] = [
   { group: 'PS mattina', cols: ['Alti', 'Alti', 'Verdi'] },
   { group: 'PS pomeriggio', cols: ['Alti', 'Alti', 'Verdi'] },
-  { group: 'Notte', cols: ['PS', 'Ruota comune'] },
+  { group: 'PS notte', cols: ['Specializzando', 'Ruota comune'] },
   { group: 'OBI', cols: ['M', 'P'] },
   { group: 'Ped Urg', cols: ['M', 'M', 'P'] },
   { group: 'Altro', cols: ['Bambi', 'Amb'] },
