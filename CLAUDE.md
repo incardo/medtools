@@ -101,7 +101,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 - **Un turno** PS codici alti (pomeriggio) il **lunedì, mercoledì, venerdì**.
 - **Un turno** PS codici bassi (pomeriggio) il **martedì e giovedì**.
 - Nel weekend Ped Urg è coperto da **un solo specializzando** per mattina e pomeriggio insieme.
-- **Blocco Ped Urg**: la stessa persona copre Ped Urg dal **venerdì pomeriggio** al **lunedì mattina** (ven P, sab 12h, dom 12h, lun M), poi **smonto il martedì**. **[detto]** Nel motore è una preferenza forte: se la persona non è disponibile in uno dei giorni, il blocco si spezza invece di lasciare il posto scoperto. **[assunzione]**
+- **Blocco Ped Urg**: la stessa persona copre Ped Urg dal **venerdì pomeriggio** al **lunedì mattina** (ven P, sab 12h, dom 12h, lun M), poi smonto, di preferenza il martedì (non obbligatorio). **[detto]** È una **preferenza forte**: se la persona non è disponibile in uno dei giorni, il blocco si spezza invece di lasciare il posto scoperto; nessun avviso se si spezza a mano. I blocchi **ruotano in automatico** tra i IV anno grazie al riequilibrio. **[detto]**
 
 ### V anno **[detto]**
 
