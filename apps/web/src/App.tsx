@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { monthsOfAcademicYear } from '@medtools/engine';
-import { seedData, useAppData } from './store';
+import { browserData, initialComposition } from './store';
+import { useSharedData, type SyncStatus } from './sync';
 import { CalendarView } from './views/CalendarView';
 import { AvailabilityView } from './views/AvailabilityView';
 import { PeopleView } from './views/PeopleView';
@@ -19,7 +20,7 @@ const TABS = [
 type Tab = (typeof TABS)[number][0];
 
 export function App() {
-  const [data, setData] = useAppData();
+  const { data, setData, status, empty, login, logout } = useSharedData();
   const [tab, setTab] = useState<Tab>('calendario');
   const [month, setMonth] = useState('2026-11');
   const months = data.academicYears.flatMap((a) => monthsOfAcademicYear(a.id));
@@ -40,6 +41,12 @@ export function App() {
             </button>
           ))}
         </nav>
+        <SyncBadge status={status} />
+        {status.state !== 'login' && status.state !== 'blocked' && (
+          <button className="link logout" onClick={logout} title="Esci da questo browser">
+            Esci
+          </button>
+        )}
         <select className="month" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Mese">
           {months.map((m) => (
             <option key={m} value={m}>
@@ -49,25 +56,91 @@ export function App() {
         </select>
       </header>
 
-      <div className="banner">
-        Prototipo con <b>nomi fittizi</b>. I dati restano solo in questo browser: non inserire dati reali.{' '}
-        <button
-          className="link"
-          onClick={() => {
-            if (confirm('Ripristinare i dati di esempio? Le modifiche fatte andranno perse.')) setData(seedData());
-          }}
-        >
-          Ripristina dati di esempio
-        </button>
-      </div>
+      {status.state === 'login' ? (
+        <Login onLogin={login} />
+      ) : status.state === 'blocked' ? (
+        <div className="banner bad">{status.message}</div>
+      ) : status.state === 'loading' ? (
+        <div className="banner">Caricamento dei dati…</div>
+      ) : empty ? (
+        <EmptyStart onLoad={setData} />
+      ) : null}
 
-      <main>
-        {tab === 'calendario' && <CalendarView {...props} />}
-        {tab === 'disponibilita' && <AvailabilityView {...props} />}
-        {tab === 'persone' && <PeopleView {...props} />}
-        {tab === 'panoramica' && <OverviewView {...props} />}
-        {tab === 'parametri' && <ParamsView {...props} />}
-      </main>
+      {status.state !== 'login' && status.state !== 'blocked' && status.state !== 'loading' && (
+        <main>
+          {tab === 'calendario' && <CalendarView {...props} />}
+          {tab === 'disponibilita' && <AvailabilityView {...props} />}
+          {tab === 'persone' && <PeopleView {...props} />}
+          {tab === 'panoramica' && <OverviewView {...props} />}
+          {tab === 'parametri' && <ParamsView {...props} />}
+        </main>
+      )}
     </div>
+  );
+}
+
+function SyncBadge({ status }: { status: SyncStatus }) {
+  const [text, cls] =
+    status.state === 'ok'
+      ? ['Salvato', 'ok']
+      : status.state === 'saving'
+        ? ['Salvataggio…', '']
+        : status.state === 'loading'
+          ? ['Caricamento…', '']
+          : status.state === 'blocked' || status.state === 'login'
+            ? ['Non connesso', 'bad']
+            : ['Non salvato: riprovo', 'bad'];
+  return (
+    <span className={`sync ${cls}`} title={status.state === 'error' || status.state === 'blocked' ? status.message : 'Dati condivisi con tutti gli utenti'}>
+      {text}
+    </span>
+  );
+}
+
+/** Database condiviso ancora vuoto: si parte dai dati di questo browser o dalla composizione iniziale. */
+function EmptyStart({ onLoad }: { onLoad: (d: ReturnType<typeof initialComposition>) => void }) {
+  const local = browserData();
+  return (
+    <div className="banner">
+      Il database condiviso è vuoto. Da dove partiamo?{' '}
+      {local && (
+        <button className="link" onClick={() => confirm(`Caricare i dati di questo browser (${local.people.length} persone, turni e assenze)?`) && onLoad(local)}>
+          Usa i dati salvati in questo browser
+        </button>
+      )}
+      {local && ' oppure '}
+      <button className="link" onClick={() => confirm('Caricare la composizione iniziale 2026/27 (V 10, IV 8, III 6)?') && onLoad(initialComposition())}>
+        Usa la composizione iniziale
+      </button>
+      . Poi nomi e composizione si correggono nella scheda Persone.
+    </div>
+  );
+}
+
+function Login({ onLogin }: { onLogin: (password: string) => Promise<void> }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await onLogin(password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Accesso non riuscito');
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="login" onSubmit={submit}>
+      <h2>Accesso</h2>
+      <p className="hint">Inserisci la password condivisa tra gli specializzandi. Resti collegato su questo browser per 30 giorni.</p>
+      <input type="password" autoFocus autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
+      <button className="primary" disabled={busy || !password}>
+        {busy ? 'Verifico…' : 'Entra'}
+      </button>
+      {error && <p className="login-error">{error}</p>}
+    </form>
   );
 }

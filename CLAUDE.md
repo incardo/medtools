@@ -46,7 +46,7 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
 
 - Persone e nomi si possono **aggiungere, togliere o modificare in qualsiasi momento**.
 - L'app mostra una **tabella della composizione corrente**: chi c'è oggi in ogni anno di corso (III, IV, V).
-- Per ora si usano **nomi fittizi** (anche nei dati di esempio e nei test). I nomi reali si inseriscono dall'app.
+- La composizione caricata nell'app (V 10, IV 8, III 6) è quella **effettiva** e si corregge a mano dalla scheda Persone. **[detto]** Solo i **test** usano nomi fittizi.
 
 **Gruppo noto per il V anno 2026/27:** Incardona, Somenzi, Cortesia, Serra, più chi rientra (nomi da definire). **[detto]**
 
@@ -145,7 +145,7 @@ Ogni posto PS feriale ha un anno di corso: non ci sono più posti facoltativi. I
 
 ### Vincoli per gruppo **[detto]**
 
-III, IV e V anno sono persone con un nome (fittizio, per ora). I vincoli valgono per loro:
+III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
 
 - III anno **non** può coprire **Ped Urg al pomeriggio**, né OBI. Può invece coprire il PS al pomeriggio (es. nel weekend). **[detto]** 
 - V anno: nessuna restrizione (finché è presente).
@@ -254,7 +254,7 @@ Risolti il 28/09/2026 (due giri): Bambi/Ambulatorio, 12h e smonto, weekend PS, s
 
 Risolti il 28/09/2026 (terzo giro): posti PS feriali senza anno (ora c'è lo schema completo), V anno ai verdi lun/ven pomeriggio, ambulatorio solo gio/ven, OBI del V anno anche nel weekend.
 
-**Organico di riferimento** (per test e dati di esempio): V anno 10, IV anno 8, III anno 6. **[detto]** Con questi numeri novembre 2026 non ha posti scoperti e la ruota comune non serve.
+**Organico di riferimento** (composizione iniziale e test): V anno 10, IV anno 8, III anno 6. **[detto]** Con questi numeri novembre 2026 non ha posti scoperti e la ruota comune non serve.
 
 Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h verdi, scambio la domenica), OBI di fine ottobre solo al IV anno.
 
@@ -337,7 +337,12 @@ medtools/
 ### Stato (prototipo, 28/09/2026)
 
 - `packages/engine`: motore TS con test (`npm test`). Regole in `src/rules.ts` (`buildDemand`), assegnazione in `src/engine.ts` (`suggestMonth`, `validate`).
-- `apps/web`: Vite + React, dati in `localStorage` del browser (solo nomi fittizi), niente login né database.
+- `apps/web`: Vite + React. **Dati condivisi** tra tutti gli utenti su **Cloudflare D1** (database `medtools`), letti e scritti da Pages Functions in `apps/web/functions/api/` (`GET/POST /api/data`).
+  - I dati sono spezzati in record chiave → JSON (una persona, un'iscrizione, un'assenza, una cella del calendario, un nome della ruota comune): ogni modifica invia solo i record cambiati, l'ultima scrittura vince record per record. Più persone possono lavorare insieme (es. Disponibilità) senza sovrascriversi. Codice in `apps/web/src/sync.ts`; schema in `apps/web/migrations/`.
+  - Le modifiche degli altri arrivano con un controllo ogni 8 secondi, solo mentre la pagina è aperta e visibile.
+  - **Accesso con password condivisa** tra gli specializzandi. **[detto]** La password è un secret del progetto Pages (`npx wrangler pages secret put APP_PASSWORD --project-name medtools`), mai nel codice. Il login crea un cookie di sessione firmato valido 30 giorni; cambiando la password si scollegano tutti. Senza password impostata le API rispondono 503. Codice in `apps/web/functions/api/_auth.ts`.
+  - Limiti accettati: nessuna traccia di chi modifica cosa; se la password circola fuori dal gruppo va cambiata.
+  - Sviluppo locale: `npx wrangler pages dev dist` in `apps/web`, con `DEV_NO_AUTH=1` in `apps/web/.dev.vars` (non committato).
 - Pubblicato su Cloudflare Pages, progetto `medtools`: https://medtools.pages.dev. Deploy: `npm run deploy` (richiede `wrangler login`). Node.js su Windows: `C:\Program Files\nodejs`.
 - Assunzioni del prototipo, da rivedere insieme (sono in `buildDemand`):
   - la ruota comune solo come ripiego per le notti lun–ven;

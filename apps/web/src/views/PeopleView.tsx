@@ -24,8 +24,10 @@ export function PeopleView({ data, setData, month }: ViewProps) {
   const others = data.people.filter((p) => !enrolledIds.has(p.id));
   const nameOf = (id: string) => data.people.find((p) => p.id === id)?.name ?? '?';
 
+  // Confronto per contenuto, non per riferimento: i dati possono essere stati ricaricati dal server nel frattempo.
+  const same = (a: Enrollment, b: Enrollment) => a.personId === b.personId && a.academicYear === b.academicYear && a.activeFrom === b.activeFrom;
   const updateEnrollment = (e: Enrollment, patch: Partial<Enrollment>) =>
-    setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (x === e ? { ...x, ...patch } : x)) }));
+    setData((d) => ({ ...d, enrollments: d.enrollments.map((x) => (same(x, e) ? { ...x, ...patch } : x)) }));
 
   const addPerson = () => {
     if (!name.trim()) return;
@@ -162,7 +164,7 @@ export function PeopleView({ data, setData, month }: ViewProps) {
                         className="danger"
                         onClick={() => {
                           if (confirm(`Togliere ${p.name} dall'anno ${ay.id}? I turni già assegnati restano nel calendario.`))
-                            setData((d) => ({ ...d, enrollments: d.enrollments.filter((x) => x !== e) }));
+                            setData((d) => ({ ...d, enrollments: d.enrollments.filter((x) => !same(x, e)) }));
                         }}
                       >
                         Togli
@@ -181,7 +183,7 @@ export function PeopleView({ data, setData, month }: ViewProps) {
           Dal giorno <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </label>
         <label>
-          Nome <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Cognome (fittizio)" />
+          Nome <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Cognome" />
         </label>
         <label>
           Anno

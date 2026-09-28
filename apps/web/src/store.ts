@@ -1,5 +1,4 @@
-﻿import { useEffect, useState } from 'react';
-import {
+﻿import {
   academicYearOf,
   addDays,
   countAssignments,
@@ -22,86 +21,52 @@ export interface Cell {
 
 export interface AppData {
   version: 1;
-  /** Versione dei dati di esempio: se cambia, i dati salvati nel browser vengono sostituiti. */
-  seed?: number;
   people: Person[];
   enrollments: Enrollment[];
   academicYears: AcademicYear[];
   /** chiave `${personId}|${date}` */
   absences: Record<string, AbsenceKind>;
   monthParams: Record<string, MonthParams>;
-  /** mese â†’ chiave `${date}|${slot}#${idx}` â†’ cella */
+  /** mese → chiave `${date}|${slot}#${idx}` → cella */
   assignments: Record<string, Record<string, Cell>>;
   /** Notte PS: nomi della ruota comune scritti a mano, per data (fuori anagrafica e fuori bilanciamento). */
   ruotaNames?: Record<string, string>;
 }
 
-const STORAGE_KEY = 'medtools:v1';
-/** 2 = organico di esempio V 10, IV 8, III 6. Finché ci sono solo nomi fittizi, alzarlo resetta i dati salvati. */
-const SEED_VERSION = 2;
-
 export const YEAR_LABEL: Record<Year, string> = { 3: 'III', 4: 'IV', 5: 'V' };
 
-/** Dati di esempio con nomi fittizi (anno 2026/27). */
-export function seedData(): AppData {
+export const FIRST_YEAR: AcademicYear = { id: '2026/27', start: '2026-11-01', end: '2027-10-31', vLastDay: '2027-10-27' };
+
+export function emptyData(): AppData {
+  return { version: 1, people: [], enrollments: [], academicYears: [FIRST_YEAR], absences: {}, monthParams: {}, assignments: {}, ruotaNames: {} };
+}
+
+/** Composizione iniziale dell'anno 2026/27, da correggere a mano nella scheda Persone. */
+export function initialComposition(): AppData {
   const groups: [Year, string[]][] = [
     [5, ['Alberti', 'Bassi', 'Caruso', 'De Luca', 'Esposito', 'Ferrari', 'Greco', 'Lombardi', 'Mancini', 'Moretti']],
     [4, ['Fontana', 'Galli', 'Longo', 'Marchetti', 'Negri', 'Orlando', 'Palumbo', 'Rinaldi']],
     [3, ['Pellegrini', 'Riva', 'Sala', 'Testa', 'Valentini', 'Zanetti']],
   ];
-  const people: Person[] = [];
-  const enrollments: Enrollment[] = [];
+  const data = emptyData();
   for (const [year, names] of groups) {
     for (const name of names) {
       const id = name.toLowerCase().replace(/\W/g, '');
-      people.push({ id, name, bambiInterest: name === 'Galli' || name === 'Sala' });
-      enrollments.push({ personId: id, academicYear: '2026/27', year, activeFrom: '2026-11-01' });
+      data.people.push({ id, name, bambiInterest: false });
+      data.enrollments.push({ personId: id, academicYear: FIRST_YEAR.id, year, activeFrom: FIRST_YEAR.start });
     }
   }
-  const absences: Record<string, AbsenceKind> = {
-    'fontana|2026-11-09': 'F',
-    'fontana|2026-11-10': 'F',
-    'fontana|2026-11-11': 'F',
-    'galli|2026-11-04': 'noM',
-    'longo|2026-11-18': 'X',
-    'alberti|2026-11-20': 'F',
-    'alberti|2026-11-21': 'F',
-    'riva|2026-11-12': 'noP',
-    'testa|2026-11-25': 'X',
-  };
-  return {
-    version: 1,
-    seed: SEED_VERSION,
-    people,
-    enrollments,
-    academicYears: [{ id: '2026/27', start: '2026-11-01', end: '2027-10-31', vLastDay: '2027-10-27' }],
-    absences,
-    monthParams: {},
-    assignments: {},
-  };
+  return data;
 }
 
-function load(): AppData {
+/** Dati salvati in questo browser dalla versione precedente dell'app (prima dei dati condivisi). */
+export function browserData(): AppData | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const saved = raw ? (JSON.parse(raw) as AppData) : null;
-    if (saved && saved.seed === SEED_VERSION) return saved;
+    const raw = localStorage.getItem('medtools:v1');
+    return raw ? ({ ...emptyData(), ...(JSON.parse(raw) as AppData) } as AppData) : null;
   } catch {
-    /* storage non disponibile: si riparte dai dati di esempio */
+    return null;
   }
-  return seedData();
-}
-
-export function useAppData() {
-  const [data, setData] = useState<AppData>(load);
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {
-      /* ignora */
-    }
-  }, [data]);
-  return [data, setData] as const;
 }
 
 export function paramsFor(data: AppData, month: string): MonthParams {

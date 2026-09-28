@@ -8,3 +8,6 @@ dist/
 *.xls
 *.csv
 data/legacy/
+
+# Variabili locali di wrangler (mai nel repo)
+.dev.vars

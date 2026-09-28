@@ -1,0 +1,12 @@
+name = "medtools"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "medtools"
+database_id = "0084b10e-80d6-43b5-bda2-009224890fd0"
+migrations_dir = "migrations"
+
+# Password di accesso condivisa: NON qui, ma come secret del progetto:
+#   npx wrangler pages secret put APP_PASSWORD --project-name medtools
