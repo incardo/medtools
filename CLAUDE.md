@@ -62,7 +62,7 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
   - Esempio novembre 2026: il gruppo IV anno 2025/26 passa al **V anno**, ma Aluffi e Topalli vanno via. Restano Incardona, Somenzi, Cortesia, Serra, più chi rientra. **[detto]**
   - Chi rientra viene riattivato in anagrafica con una nuova iscrizione, senza ricrearlo da zero. **[detto]**
 - Le **regole sono legate all'anno di corso**, non alla persona: chi passa dal IV al V anno adotta automaticamente le regole del V anno. **[detto]**
-- Il **V anno finisce il 27 ottobre, incluso** (dal 28 non c'è più). **[detto]** Negli ultimi giorni di ottobre i suoi turni li coprono IV e III anno. La data resta un parametro dell'anno, modificabile.
+- Il **V anno finisce il 27 ottobre, incluso** (dal 28 non c'è più). **[detto]** Negli ultimi giorni di ottobre i suoi turni li coprono IV e III anno; l'**OBI solo il IV anno**. **[detto]** La data resta un parametro dell'anno, modificabile.
 - **Storico multi-mese** per il riequilibrio, che **si azzera a novembre**. **[detto]**
 - Le **regole per anno non cambiano** da un anno all'altro. **[detto]**
 - Chi esce non viene cancellato: resta in archivio con i suoi turni. **[assunzione]**
@@ -79,7 +79,7 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
 | `PS_VERDI_M` / `PS_VERDI_P` | PS codici bassi ("verdista"), mattina / pomeriggio | 1 posto per fascia |
 | `PS_NOTTE` | PS notte | |
 | `OBI_M` / `OBI_P` | Osservazione breve, mattina / pomeriggio | |
-| `PEDU_M` / `PEDU_P` | Pediatria Urgenza, mattina / pomeriggio | mattina: **2 posti** (un IV e un III anno); pomeriggio: 1 posto (IV) |
+| `PEDU_M` / `PEDU_P` | Pediatria Urgenza, mattina / pomeriggio | mattina feriale: **2 posti** (un IV e un III anno); pomeriggio: 1 posto (IV); weekend: un IV per 12h |
 | `BAMBI` | Bambi | **facoltativo**: può restare scoperto; si assegna solo a chi è interessato; **non entra nel bilanciamento** **[detto]** |
 | `AMB` | Ambulatorio | coperto dal **III anno** **[detto]** |
 
@@ -96,36 +96,56 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 - Ped Urg mattina **e** pomeriggio, **tutti i giorni**.
 - OBI mattina il **lunedì**.
 - **Notte** il **giovedì** e il **sabato**, con smonto.
-- **Un turno** PS codici alti (mattina **o** pomeriggio) il **lunedì, mercoledì, venerdì**.
-- **Un turno** PS codici bassi (mattina **o** pomeriggio) il **martedì e giovedì**.
+- **Un turno** PS codici bassi (mattina) il **lunedì, mercoledì, venerdì**.
+- **Un turno** PS codici alti (mattina) il **martedì e giovedì**.
+- **Un turno** PS codici alti (pomeriggio) il **lunedì, mercoledì, venerdì**.
+- **Un turno** PS codici bassi (pomeriggio) il **martedì e giovedì**.
 - Nel weekend Ped Urg è coperto da **un solo specializzando** per mattina e pomeriggio insieme.
 
 ### V anno **[detto]**
 
-- PS alti mattina (1 turno) e PS alti pomeriggio (1 turno).
-- OBI mattina **e** pomeriggio.
+- PS alti mattina (1 turno) e PS alti pomeriggio (1 turno) anche weekend.
+- **Lunedì e venerdì pomeriggio** PS **bassi** (verdi) al posto degli alti. **[detto]**
+- OBI mattina **e** pomeriggio, **anche nel weekend**. **[detto]**
 - 5 notti PS nel mese, suggerite dal motore in modo **bilanciato** tra le persone del V anno. **[detto]**
 - A fine anno (ultimi giorni di ottobre) non c'è più: i suoi turni li coprono IV e III anno.
 - Eventuali giorni d'esame (es. 5 ottobre 2026) sono **parametri del mese**, non regole fisse (vedi sezione 8).
 
 ### III anno **[detto]**
 
-- PS alti (mattina **o** pomeriggio) martedì e giovedì.
-- PS bassi (mattina **o** pomeriggio) lunedì, mercoledì, venerdì.
-- **Ambulatorio**.
-- **Ped Urg mattina**, insieme a un IV anno (secondo posto di Ped Urg mattina). **[detto]**
-  - Vale tutti i giorni, weekend compreso (nel weekend affianca il IV anno che fa le 12h). **[assunzione]**
+- PS alti (mattina e pomeriggio) lunedì e venerdì.
+- PS bassi (mattina) martedi e giovedì.
+- PS alti (pomeriggio) martedi e giovedì.
+- PS alti (mattina) mercoledi.
+- PS bassi (pomeriggio) mercoledi.
+- PS nel weekend: una persona agli **alti per 12h** (mattina + pomeriggio) e una ai **verdi per 12h**; la **domenica si scambiano** (chi sabato era agli alti va ai verdi e viceversa). **[detto]**
+- **Ambulatorio** solo il **giovedì e venerdì**; gli altri giorni non serve copertura. **[detto]**
+- **Ped Urg mattina**, insieme a un IV anno (secondo posto di Ped Urg mattina) tutti i giorni tranne i wekkend. **[detto]**
+
 
 ### Weekend in PS **[detto]**
 
 - PS codici alti: **V anno** e **un III anno**.
 - PS codici bassi (verdi): **un III anno**.
+- I due III anno fanno 12h ciascuno (alti e verdi) e la domenica si scambiano. **[detto]** Nel motore lo scambio è una preferenza: se uno dei due non è disponibile la domenica, il posto va a un altro III anno.
+
+### PS feriale: schema risultante
+
+| | Mattina: alti | Mattina: verdi | Pomeriggio: alti | Pomeriggio: verdi |
+|---|---|---|---|---|
+| Lun | V + III | IV | IV + III | V |
+| Mar | V + IV | III | V + III | IV |
+| Mer | V + III | IV | V + IV | III |
+| Gio | V + IV | III | V + III | IV |
+| Ven | V + III | IV | IV + III | V |
+
+Ogni posto PS feriale ha un anno di corso: non ci sono più posti facoltativi. In codice: `PS_FERIALE` in `packages/engine/src/rules.ts`.
 
 ### Vincoli per gruppo **[detto]**
 
 III, IV e V anno sono persone con un nome (fittizio, per ora). I vincoli valgono per loro:
 
-- III anno **non** può coprire **Ped Urg al pomeriggio**, né OBI. Può invece coprire il PS al pomeriggio (es. nel weekend). **[detto]** (corregge la versione precedente, che diceva "niente pomeriggio in PS")
+- III anno **non** può coprire **Ped Urg al pomeriggio**, né OBI. Può invece coprire il PS al pomeriggio (es. nel weekend). **[detto]** 
 - V anno: nessuna restrizione (finché è presente).
 
 ### Ruota comune **[detto]**
@@ -133,7 +153,6 @@ III, IV e V anno sono persone con un nome (fittizio, per ora). I vincoli valgono
 - Sono persone **a caso**, non gestite in anagrafica: nel tool resta l'etichetta generica **"Ruota comune"**, assegnabile a un turno al posto di un nome.
 - Ruota comune copre **solo le notti in PS dal lunedì al venerdì**. **[detto]** (sostituisce la regola precedente "non può coprire Ped Urg né OBI")
 - Nel motore è il ripiego per le notti lun–ven quando nessuno dell'anno previsto è disponibile. **[assunzione]**
-- **[dubbio]** Nei feriali, per ogni fascia, c'è un posto PS (alti o verdi) che non è di nessun anno e che prima andava alla ruota comune. Ora è un **posto facoltativo**: il motore non lo compila e non conta come scoperto, si riempie a mano con chi è disponibile. Chi lo copre davvero?
 - La ruota comune **non entra** nel bilanciamento né nella panoramica per medico. **[detto]**
 
 ---
@@ -147,8 +166,7 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
 3. **Smonto dopo il weekend**, **dove possibile** (preferenza, non vincolo assoluto): **[detto]**
    - chi lavora in **PS sia sabato sia domenica** non lavora il **lunedì**;
    - chi fa **Ped Urg 12 ore (mattina + pomeriggio) sia sabato sia domenica** non lavora il **martedì**.
-4. In PS ogni giorno, tra mattina e pomeriggio, i IV anno **e i III anno** **si alternano**: uno ai codici alti e uno ai codici bassi, sempre nel rispetto delle regole per anno.
-5. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
+4. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
@@ -229,12 +247,13 @@ Serve da riferimento per ottobre 2026 e per importare lo storico. Il workbook or
 
 Risolti il 28/09/2026 (due giri): Bambi/Ambulatorio, 12h e smonto, weekend PS, storico, Spina, promozione, nomi, pool, alternanza, assenze Excel, notti V anno, vincolo III anno, ruota comune, 27 ottobre, ingressi a metà anno, regole stabili, smonto lunedì/martedì, rientri, ruota comune fuori dal bilanciamento.
 
-Aperti:
+Risolti il 28/09/2026 (terzo giro): posti PS feriali senza anno (ora c'è lo schema completo), V anno ai verdi lun/ven pomeriggio, ambulatorio solo gio/ven, OBI del V anno anche nel weekend.
 
-1. Chi copre i **posti PS feriali** che non sono di nessun anno, ora che la ruota comune fa solo le notti lun–ven (sezione 5).
-2. Carico del V anno: con 5 persone e le regole lette alla lettera (PS alti M+P e OBI M+P ogni giorno, 5 notti a testa) ognuno lavora 25–26 giorni al mese e restano OBI scoperti. Da rivedere: OBI anche nel weekend? "5 notti" a persona o in totale?
+**Organico di riferimento** (per test e dati di esempio): V anno 10, IV anno 8, III anno 6. **[detto]** Con questi numeri novembre 2026 non ha posti scoperti e la ruota comune non serve.
 
-Restano poi le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
+Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h verdi, scambio la domenica), OBI di fine ottobre solo al IV anno.
+
+Aperti: nessuno. Restano le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
 
 ---
 
@@ -316,11 +335,9 @@ medtools/
 - `apps/web`: Vite + React, dati in `localStorage` del browser (solo nomi fittizi), niente login né database.
 - Pubblicato su Cloudflare Pages, progetto `medtools`: https://medtools.pages.dev. Deploy: `npm run deploy` (richiede `wrangler login`). Node.js su Windows: `C:\Program Files\nodejs`.
 - Assunzioni del prototipo, da rivedere insieme (sono in `buildDemand`):
-  - feriali: IV e III anno in fasce opposte (uno M, uno P), con la fascia che si scambia ogni settimana;
-  - i posti PS feriali non assegnati a nessun anno sono facoltativi (manuali); la ruota comune solo come ripiego per le notti lun–ven;
-  - OBI del V anno anche nel weekend; ambulatorio solo nei feriali;
+  - la ruota comune solo come ripiego per le notti lun–ven;
+  - lo scambio alti/verdi del III anno la domenica è una preferenza, non un vincolo;
   - 5 notti del V anno **per persona**;
-  - Ped Urg mattina del III anno anche nel weekend;
   - festivi infrasettimanali non gestiti.
 - Calendario: le celle vuote hanno già il colore dell'anno previsto dalla regola; quando si assegna una persona prendono il colore del suo anno.
 

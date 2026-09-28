@@ -39,8 +39,8 @@ export const YEAR_LABEL: Record<Year, string> = { 3: 'III', 4: 'IV', 5: 'V' };
 /** Dati di esempio con nomi fittizi (anno 2026/27). */
 export function seedData(): AppData {
   const groups: [Year, string[]][] = [
-    [5, ['Alberti', 'Bassi', 'Caruso', 'De Luca', 'Esposito']],
-    [4, ['Fontana', 'Galli', 'Longo', 'Marchetti', 'Negri', 'Orlando']],
+    [5, ['Alberti', 'Bassi', 'Caruso', 'De Luca', 'Esposito', 'Ferrari', 'Greco', 'Lombardi', 'Mancini', 'Moretti']],
+    [4, ['Fontana', 'Galli', 'Longo', 'Marchetti', 'Negri', 'Orlando', 'Palumbo', 'Rinaldi']],
     [3, ['Pellegrini', 'Riva', 'Sala', 'Testa', 'Valentini', 'Zanetti']],
   ];
   const people: Person[] = [];

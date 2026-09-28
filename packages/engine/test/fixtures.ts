@@ -1,11 +1,11 @@
 import type { EngineInput, Enrollment, Person, Year } from '../src';
 
-/** Nomi fittizi: 5 V anno, 6 IV anno, 6 III anno, anno 2026/27. */
+/** Nomi fittizi: 10 V anno, 8 IV anno, 6 III anno, anno 2026/27. */
 export function exampleInput(overrides: Partial<EngineInput> = {}): EngineInput {
   const groups: [Year, string[]][] = [
-    [5, ['Alfa', 'Bravo', 'Charlie', 'Delta', 'Echo']],
-    [4, ['Foxtrot', 'Golf', 'Hotel', 'India', 'Juliett', 'Kilo']],
-    [3, ['Lima', 'Mike', 'November', 'Oscar', 'Papa', 'Quebec']],
+    [5, ['Alfa', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliett']],
+    [4, ['Kilo', 'Lima', 'Mike', 'November', 'Oscar', 'Papa', 'Quebec', 'Romeo']],
+    [3, ['Sierra', 'Tango', 'Uniform', 'Victor', 'Whiskey', 'Xray']],
   ];
   const people: Person[] = [];
   const enrollments: Enrollment[] = [];

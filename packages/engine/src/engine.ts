@@ -140,7 +140,11 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       pending = pending.filter((p) => p !== pos);
 
       if (cands.length) {
-        const who = cands.reduce((a, b) => (score(a, pos) <= score(b, pos) ? a : b));
+        // Scambio del weekend: se possibile, chi il giorno prima faceva l'altro posto.
+        const prev = pos.prevDaySlot;
+        const linked = prev ? cands.filter((p) => board.slots(p, addDays(pos.date, -1)).includes(prev)) : [];
+        const pool = linked.length ? linked : cands;
+        const who = pool.reduce((a, b) => (score(a, pos) <= score(b, pos) ? a : b));
         for (const slot of [pos.slot, ...pos.alsoSlots]) {
           const a: Assignment = { date: pos.date, slot, idx: pos.idx, who, source: 'suggested' };
           out.push(a);
@@ -192,6 +196,18 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
   for (const a of input.previous ?? []) board.add(a);
   for (const a of assignments) board.add(a);
   const byKey = new Map(assignments.map((a) => [keyOf(a), a]));
+  // Turni da 12h ammessi per giorno (Ped Urg e PS del III anno nel weekend).
+  const twelveHours = new Map(
+    demand.map((day) => [
+      day[0].date,
+      day.filter((p) => p.alsoSlots.length).map((p) => [p.slot, ...p.alsoSlots].map((s) => `${s}#${p.idx}`).sort().join()),
+    ]),
+  );
+  const byPersonDay = new Map<string, string[]>();
+  for (const a of assignments) {
+    const k = `${a.who}|${a.date}`;
+    byPersonDay.set(k, [...(byPersonDay.get(k) ?? []), `${a.slot}#${a.idx}`]);
+  }
   const out: Warning[] = [];
 
   for (const a of assignments) {
@@ -211,8 +227,9 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     const why = roster.unavailable(a.who, a.date, SLOT_INFO[a.slot].fascia);
     if (why) w('error', `Non disponibile (${why})`);
     const same = board.slots(a.who, a.date);
-    const pedu12h = same.length === 2 && same.includes('PEDU_M') && same.includes('PEDU_P');
-    if (same.length > 1 && !pedu12h) w('error', 'Più turni nello stesso giorno');
+    const mine = [...(byPersonDay.get(`${a.who}|${a.date}`) ?? [])].sort().join();
+    const twelveH = twelveHours.get(a.date)?.includes(mine) ?? false;
+    if (same.length > 1 && !twelveH) w('error', 'Più turni nello stesso giorno');
     if (board.slots(a.who, addDays(a.date, -1)).includes('PS_NOTTE')) w('error', 'Smonto notte non rispettato');
     if (board.weekendRestDue(a.who, a.date)) w('warn', 'Smonto dopo il weekend non rispettato');
   }

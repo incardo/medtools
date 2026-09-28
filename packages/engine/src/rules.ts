@@ -1,4 +1,4 @@
-import { isWeekend, weekIndex, weekday } from './dates';
+import { isWeekend, weekday } from './dates';
 import type { Fascia, Family, Position, SlotCode, Year } from './types';
 
 export const SLOT_INFO: Record<SlotCode, { family: Family; fascia: Fascia; label: string }> = {
@@ -56,25 +56,35 @@ interface DemandContext {
 type Draft = Omit<Position, 'date' | 'alsoSlots' | 'ruotaFallback' | 'manualOnly' | 'label'> & Partial<Position>;
 
 /**
+ * PS feriale: per ogni giorno (1 = lunedì) e fascia, chi copre i due posti alti e il posto verdi.
+ * Il V anno fa gli alti tranne lunedì e venerdì pomeriggio, quando fa i verdi.
+ */
+const PS_FERIALE: Record<number, Record<'M' | 'P', { alti: [Year, Year]; verdi: Year }>> = {
+  1: { M: { alti: [5, 3], verdi: 4 }, P: { alti: [4, 3], verdi: 5 } },
+  2: { M: { alti: [5, 4], verdi: 3 }, P: { alti: [5, 3], verdi: 4 } },
+  3: { M: { alti: [5, 3], verdi: 4 }, P: { alti: [5, 4], verdi: 3 } },
+  4: { M: { alti: [5, 4], verdi: 3 }, P: { alti: [5, 3], verdi: 4 } },
+  5: { M: { alti: [5, 3], verdi: 4 }, P: { alti: [4, 3], verdi: 5 } },
+};
+
+/**
  * Posti da coprire in un giorno, con chi li può coprire (sezioni 5–6 di CLAUDE.md).
  *
- * Assunzioni del prototipo:
- * - IV e III anno nei giorni feriali prendono fasce opposte (uno M, uno P) e la fascia si scambia ogni settimana.
- * - I posti PS feriali non assegnati a nessun anno sono facoltativi: si compilano a mano con chi è disponibile.
- * - OBI del V anno anche nel weekend; ambulatorio solo nei feriali.
- * - Ped Urg mattina del III anno tutti i giorni, weekend compreso.
+ * Senza V anno (fine ottobre) i suoi posti passano a IV e III anno; l'OBI solo al IV (il III non fa OBI).
  */
 export function buildDemand(date: string, ctx: DemandContext): Position[] {
   const wd = weekday(date);
   const drafts: Draft[] = [];
   const V: Year[] = ctx.vPresent ? [5] : [4, 3];
+  const who = (y: Year): Year[] => (y === 5 ? V : [y]);
 
   if (isWeekend(date)) {
-    for (const f of ['M', 'P'] as const) {
-      drafts.push({ slot: `PS_ALTI_${f}`, idx: 0, years: V });
-      drafts.push({ slot: `PS_ALTI_${f}`, idx: 1, years: [3] });
-      drafts.push({ slot: `PS_VERDI_${f}`, idx: 0, years: [3] });
-    }
+    drafts.push({ slot: 'PS_ALTI_M', idx: 0, years: V });
+    drafts.push({ slot: 'PS_ALTI_P', idx: 0, years: V });
+    // III anno: uno agli alti e uno ai verdi, 12h ciascuno; la domenica si scambiano.
+    const sunday = wd === 0;
+    drafts.push({ slot: 'PS_ALTI_M', idx: 1, years: [3], alsoSlots: ['PS_ALTI_P'], prevDaySlot: sunday ? 'PS_VERDI_M' : undefined });
+    drafts.push({ slot: 'PS_VERDI_M', idx: 0, years: [3], alsoSlots: ['PS_VERDI_P'], prevDaySlot: sunday ? 'PS_ALTI_M' : undefined });
     // Nel weekend la ruota comune non copre le notti.
     drafts.push(
       wd === 6
@@ -85,26 +95,12 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
     drafts.push({ slot: 'OBI_P', idx: 0, years: V });
     // Ped Urg 12h: una sola persona per mattina e pomeriggio
     drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'] });
-    // Ped Urg mattina: anche un III anno insieme al IV
-    drafts.push({ slot: 'PEDU_M', idx: 1, years: [3] });
   } else {
-    // Alternanza IV / III: il IV prende una fascia, il III l'altra; si scambiano ogni settimana.
-    const ivFascia = weekIndex(date) % 2 === 0 ? 'M' : 'P';
-    const iiiFascia = ivFascia === 'M' ? 'P' : 'M';
-    // Lun/Mer/Ven: IV ai codici alti, III ai verdi. Mar/Gio: il contrario.
-    const ivAlti = wd === 1 || wd === 3 || wd === 5;
-    const flex = new Map<string, Year>();
-    flex.set(ivAlti ? `PS_ALTI_${ivFascia}` : `PS_VERDI_${ivFascia}`, 4);
-    flex.set(ivAlti ? `PS_VERDI_${iiiFascia}` : `PS_ALTI_${iiiFascia}`, 3);
-
-    // Posto senza anno assegnato: facoltativo, si compila a mano.
-    const optional: Draft = { slot: 'PS_ALTI_M', idx: 0, years: [3, 4, 5], manualOnly: true, label: 'Posto facoltativo' };
     for (const f of ['M', 'P'] as const) {
-      drafts.push({ slot: `PS_ALTI_${f}`, idx: 0, years: V });
-      const alti = flex.get(`PS_ALTI_${f}`);
-      drafts.push(alti ? { slot: `PS_ALTI_${f}`, idx: 1, years: [alti] } : { ...optional, slot: `PS_ALTI_${f}`, idx: 1 });
-      const verdi = flex.get(`PS_VERDI_${f}`);
-      drafts.push(verdi ? { slot: `PS_VERDI_${f}`, idx: 0, years: [verdi] } : { ...optional, slot: `PS_VERDI_${f}`, idx: 0 });
+      const { alti, verdi } = PS_FERIALE[wd][f];
+      drafts.push({ slot: `PS_ALTI_${f}`, idx: 0, years: who(alti[0]) });
+      drafts.push({ slot: `PS_ALTI_${f}`, idx: 1, years: who(alti[1]) });
+      drafts.push({ slot: `PS_VERDI_${f}`, idx: 0, years: who(verdi) });
     }
     drafts.push(
       wd === 4
@@ -116,7 +112,8 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
     drafts.push({ slot: 'PEDU_M', idx: 0, years: [4] });
     drafts.push({ slot: 'PEDU_M', idx: 1, years: [3] });
     drafts.push({ slot: 'PEDU_P', idx: 0, years: [4] });
-    drafts.push({ slot: 'AMB', idx: 0, years: [3] });
+    // Ambulatorio solo giovedì e venerdì
+    if (wd === 4 || wd === 5) drafts.push({ slot: 'AMB', idx: 0, years: [3] });
   }
   drafts.push({ slot: 'BAMBI', idx: 0, years: [3, 4, 5], manualOnly: true });
 

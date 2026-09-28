@@ -78,15 +78,17 @@ export interface Position {
   date: string;
   slot: SlotCode;
   idx: number;
-  /** Per il 12h di Ped Urg nel weekend: la stessa persona copre anche questi slot. */
+  /** Per i 12h del weekend (Ped Urg, PS del III anno): la stessa persona copre anche questi slot. */
   alsoSlots: SlotCode[];
+  /** Preferenza: chi il giorno prima ha fatto questo slot (scambio alti/verdi del III anno nel weekend). */
+  prevDaySlot?: SlotCode;
   /** Anni di corso che possono coprirlo secondo le regole. */
   years: Year[];
   /** Se nessuno è disponibile, si scrive "Ruota comune" (solo notti lun–ven). */
   ruotaFallback: boolean;
   /** Tetto mensile per persona (notti V anno). */
   monthlyCap?: number;
-  /** Il motore non lo compila (Bambi, posti PS facoltativi): solo manuale, non conta come scoperto. */
+  /** Il motore non lo compila (Bambi): solo manuale, non conta come scoperto. */
   manualOnly: boolean;
   label: string;
 }
