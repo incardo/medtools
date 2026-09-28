@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.wrangler/
+*.log
+
+# Dati personali reali: mai nel repo
+*.xlsx
+*.xls
+*.csv
+data/legacy/

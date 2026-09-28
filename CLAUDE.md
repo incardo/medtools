@@ -1,9 +1,9 @@
 # MedTools — Turni specializzandi Pronto Soccorso
 
 Documento di passaggio dalla conversazione con Claude (chat) a VS Code.
-Contiene: obiettivo, tutte le regole dette finora, com'è fatto il file Excel attuale, cosa non funziona ancora, punti aperti e proposta di stack/hosting gratuito.
+Contiene: obiettivo, tutte le regole dette finora, gestione dell'anno di specializzazione, com'è fatto il file Excel attuale, punti aperti e proposta di stack/hosting gratuito.
 
-Convenzioni: **[detto]** = regola dichiarata dall'utente; **[assunzione]** = interpretazione mia, da confermare; **[TODO]** = non ancora fatto.
+Convenzioni: **[detto]** = regola dichiarata dall'utente; **[assunzione]** = interpretazione mia, da confermare; **[TODO]** = non ancora fatto; **[dubbio]** = punto aperto da rivedere insieme.
 
 > Salvato come `CLAUDE.md` nella root del repo: se apri questa cartella con Claude Code (anche dentro VS Code) viene letto in automatico a ogni sessione, senza doverlo incollare di nuovo.
 
@@ -11,17 +11,20 @@ Convenzioni: **[detto]** = regola dichiarata dall'utente; **[assunzione]** = int
 
 ## 1. Obiettivo
 
-Costruire uno strumento per compilare ogni mese i turni degli specializzandi (PS, OBI, Pediatria Urgenza) per il gruppo del **IV anno**, tenendo conto anche di **III e V anno**.
+Costruire uno strumento **generico** per compilare ogni mese i turni di **tutti gli specializzandi** (PS, OBI, Pediatria Urgenza), non solo del IV anno. **[detto]**
 
 Requisiti espressi:
 
+- Lo strumento è usabile da tutti gli specializzandi (III, IV e V anno), ognuno con le regole del proprio anno. Le regole definite finora restano valide. **[detto]**
 - Le regole si applicano da sole ogni mese e precompilano il calendario. **[detto]**
-- Il foglio delle disponibilità (ferie/assenze) alimenta l'assegnazione dei turni del IV anno. **[detto]**
+- Il foglio delle disponibilità (ferie/assenze) alimenta l'assegnazione dei turni di **tutti** gli anni: ognuno compila le proprie assenze. **[detto]**
+- Le persone si possono **aggiungere (e togliere) in modo flessibile durante l'anno**, non solo all'inizio. **[detto]**
+- L'anno di specializzazione **si resetta a fine ottobre**, quando il V anno se ne va. **[detto]** Vedi sezione 3.
+- Il **primo anno gestito dall'app parte da novembre 2026**. **[detto]**
 - Panoramica per medico: turni fatti per tipo, ferie/assenze, come nel foglio "Ottobre 2026" dell'Excel originale. **[detto]**
-- Riequilibrare carico e tipologia di turni usando lo storico luglio–settembre. **[detto]**
-- In futuro estendere la stessa logica a III e V anno, se tutti compilano le proprie assenze. **[detto]**
+- Riequilibrare carico e tipologia di turni usando lo storico multi-mese, che si azzera a novembre. **[detto]**
 - Interfaccia migliore di Excel: web app accessibile a tutti, pubblicata gratis, codice gestito in VS Code. **[detto]**
-- Repository GitHub creato dall'utente: `https://github.com/incardo/medtools.git` (vuota).
+- Repository GitHub creato dall'utente: `https://github.com/incardo/medtools.git`.
 
 Decisione presa: si procede con una **web app vera** (non solo una dashboard da chat).
 
@@ -29,17 +32,46 @@ Decisione presa: si procede con una **web app vera** (non solo una dashboard da 
 
 ## 2. Persone
 
-**IV anno (7 medici, gestiti dal motore):** Incardona, Somenzi, Cortesia, Aluffi, Topalli, Serra, Spina.
+Le persone sono un'**anagrafica unica**, non una lista fissa per anno. Ogni persona ha:
 
-- **Spina** può fare solo turni di PS mattina o pomeriggio: mai Ped Urg. **[detto]**
-- Nel file attuale la escludo anche da OBI e Notte. **[assunzione]** — la frase originale dice "solo PS mattina o pomeriggio", quindi è coerente, ma va confermato.
-- Per ottobre Spina deve avere un numero di turni **uguale agli altri**, senza compensare il carico ridotto dei mesi precedenti (non c'era). **[detto]**
+- un **anno di corso** (III, IV, V) che dipende dall'anno di specializzazione in corso (vedi sezione 3);
+- un periodo di **attività** (`attivo dal` / `attivo fino al`), così si può aggiungere qualcuno a metà anno o farlo uscire prima, senza toccare i mesi già chiusi. **[detto]** (flessibilità) / **[assunzione]** (forma con date)
+- l'eventuale interesse a coprire **Bambi** (turno facoltativo, vedi sezione 4).
 
-**III anno e V anno:** nomi non ancora forniti. Il modello dati deve permettere di aggiungerli da una schermata.
+Non ci sono eccezioni personali sulle regole: ognuno segue le regole del proprio anno di corso. **[detto]**
+
+Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a metà anno parte con il **conteggio da zero**: non viene messo in pari con gli altri. **[detto]**
+
+**Nomi e composizione** **[detto]**:
+
+- Persone e nomi si possono **aggiungere, togliere o modificare in qualsiasi momento**.
+- L'app mostra una **tabella della composizione corrente**: chi c'è oggi in ogni anno di corso (III, IV, V).
+- Per ora si usano **nomi fittizi** (anche nei dati di esempio e nei test). I nomi reali si inseriscono dall'app.
+
+**Gruppo noto per il V anno 2026/27:** Incardona, Somenzi, Cortesia, Serra, più chi rientra (nomi da definire). **[detto]**
 
 ---
 
-## 3. Tipi di turno (slot)
+## 3. Anno di specializzazione e passaggio d'anno
+
+- L'anno di specializzazione va da **novembre a ottobre**. **[detto]** (reset a fine ottobre)
+- Primo anno gestito dall'app: **novembre 2026 – ottobre 2027**. **[detto]**
+- A fine ottobre il **V anno esce**. **[detto]**
+- Al 1° novembre la **promozione è automatica**: III → IV, IV → V. **[detto]** Entra un **nuovo III anno**. **[assunzione]**
+- In **qualsiasi momento** si possono aggiungere o togliere persone, anche subito dopo la promozione. **[detto]** Il gruppo non passa 1:1 all'anno dopo: alcuni escono, altri **rientrano**.
+  - Esempio novembre 2026: il gruppo IV anno 2025/26 passa al **V anno**, ma Aluffi e Topalli vanno via. Restano Incardona, Somenzi, Cortesia, Serra, più chi rientra. **[detto]**
+  - Chi rientra viene riattivato in anagrafica con una nuova iscrizione, senza ricrearlo da zero. **[detto]**
+- Le **regole sono legate all'anno di corso**, non alla persona: chi passa dal IV al V anno adotta automaticamente le regole del V anno. **[detto]**
+- Il **V anno finisce il 27 ottobre, incluso** (dal 28 non c'è più). **[detto]** Negli ultimi giorni di ottobre i suoi turni li coprono IV e III anno. La data resta un parametro dell'anno, modificabile.
+- **Storico multi-mese** per il riequilibrio, che **si azzera a novembre**. **[detto]**
+- Le **regole per anno non cambiano** da un anno all'altro. **[detto]**
+- Chi esce non viene cancellato: resta in archivio con i suoi turni. **[assunzione]**
+
+- Chi rientra viene **assegnato a mano** al proprio anno di appartenenza. **[detto]**
+
+---
+
+## 4. Tipi di turno (slot)
 
 | Codice | Significato | Note |
 |---|---|---|
@@ -47,14 +79,17 @@ Decisione presa: si procede con una **web app vera** (non solo una dashboard da 
 | `PS_VERDI_M` / `PS_VERDI_P` | PS codici bassi ("verdista"), mattina / pomeriggio | 1 posto per fascia |
 | `PS_NOTTE` | PS notte | |
 | `OBI_M` / `OBI_P` | Osservazione breve, mattina / pomeriggio | |
-| `PEDU_M` / `PEDU_P` | Pediatria Urgenza, mattina / pomeriggio | |
-| `BAMBI`, `AMB` | Colonne presenti nel foglio | **regole non definite** — restano vuote |
+| `PEDU_M` / `PEDU_P` | Pediatria Urgenza, mattina / pomeriggio | mattina: **2 posti** (un IV e un III anno); pomeriggio: 1 posto (IV) |
+| `BAMBI` | Bambi | **facoltativo**: può restare scoperto; si assegna solo a chi è interessato; **non entra nel bilanciamento** **[detto]** |
+| `AMB` | Ambulatorio | coperto dal **III anno** **[detto]** |
 
 Fasce per la disponibilità: `mattina`, `pomeriggio`, `notte` (3 righe per giorno).
 
 ---
 
-## 4. Regole per anno
+## 5. Regole per anno di corso
+
+Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 
 ### IV anno **[detto]**
 
@@ -69,75 +104,98 @@ Fasce per la disponibilità: `mattina`, `pomeriggio`, `notte` (3 righe per giorn
 
 - PS alti mattina (1 turno) e PS alti pomeriggio (1 turno).
 - OBI mattina **e** pomeriggio.
-- 5 notti PS nel mese.
-- **Esame il 5 ottobre**: non copre nessun turno quel giorno, né la notte del 4 e del 5 ottobre.
-- **Dal 27 ottobre non ci sono più**: i loro turni li coprono IV e III anno.
+- 5 notti PS nel mese, suggerite dal motore in modo **bilanciato** tra le persone del V anno. **[detto]**
+- A fine anno (ultimi giorni di ottobre) non c'è più: i suoi turni li coprono IV e III anno.
+- Eventuali giorni d'esame (es. 5 ottobre 2026) sono **parametri del mese**, non regole fisse (vedi sezione 8).
 
 ### III anno **[detto]**
 
 - PS alti (mattina **o** pomeriggio) martedì e giovedì.
 - PS bassi (mattina **o** pomeriggio) lunedì, mercoledì, venerdì.
+- **Ambulatorio**.
+- **Ped Urg mattina**, insieme a un IV anno (secondo posto di Ped Urg mattina). **[detto]**
+  - Vale tutti i giorni, weekend compreso (nel weekend affianca il IV anno che fa le 12h). **[assunzione]**
 
-### Vincoli sui turni "in dubbio" (pool generici) **[detto]**
+### Weekend in PS **[detto]**
 
-Quando il turno non è assegnabile con certezza si scrive "III anno", "V anno" o "Ruota comune":
+- PS codici alti: **V anno** e **un III anno**.
+- PS codici bassi (verdi): **un III anno**.
 
-- III anno **non** può coprire turni al pomeriggio in PS, né OBI.
-- Ruota comune **non** può coprire Ped Urg, né OBI.
-- V anno: nessuna restrizione (fino al 26/10).
+### Vincoli per gruppo **[detto]**
+
+III, IV e V anno sono persone con un nome (fittizio, per ora). I vincoli valgono per loro:
+
+- III anno **non** può coprire **Ped Urg al pomeriggio**, né OBI. Può invece coprire il PS al pomeriggio (es. nel weekend). **[detto]** (corregge la versione precedente, che diceva "niente pomeriggio in PS")
+- V anno: nessuna restrizione (finché è presente).
+
+### Ruota comune **[detto]**
+
+- Sono persone **a caso**, non gestite in anagrafica: nel tool resta l'etichetta generica **"Ruota comune"**, assegnabile a un turno al posto di un nome.
+- Ruota comune copre **solo le notti in PS dal lunedì al venerdì**. **[detto]** (sostituisce la regola precedente "non può coprire Ped Urg né OBI")
+- Nel motore è il ripiego per le notti lun–ven quando nessuno dell'anno previsto è disponibile. **[assunzione]**
+- **[dubbio]** Nei feriali, per ogni fascia, c'è un posto PS (alti o verdi) che non è di nessun anno e che prima andava alla ruota comune. Ora è un **posto facoltativo**: il motore non lo compila e non conta come scoperto, si riempie a mano con chi è disponibile. Chi lo copre davvero?
+- La ruota comune **non entra** nel bilanciamento né nella panoramica per medico. **[detto]**
 
 ---
 
-## 5. Regole trasversali
+## 6. Regole trasversali
 
-Valgono per tutti i medici assegnati dal motore. **[detto]**
+Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]**
 
 1. Una persona con un turno assegnato **non riceve altri turni lo stesso giorno**.
 2. Chi fa la **notte** non lavora né il giorno stesso né il giorno dopo.
-3. Chi fa **12 ore** (soprattutto dopo il weekend) ha diritto a un giorno di smonto, **dove possibile** (preferenza, non vincolo assoluto).
-4. In PS ogni giorno, tra mattina e pomeriggio, i IV anno **si alternano**: uno ai codici alti e uno ai codici bassi, sempre nel rispetto delle regole per anno.
-5. Riequilibrare **tipologia di turni e carico** usando i conteggi luglio–settembre.
+3. **Smonto dopo il weekend**, **dove possibile** (preferenza, non vincolo assoluto): **[detto]**
+   - chi lavora in **PS sia sabato sia domenica** non lavora il **lunedì**;
+   - chi fa **Ped Urg 12 ore (mattina + pomeriggio) sia sabato sia domenica** non lavora il **martedì**.
+4. In PS ogni giorno, tra mattina e pomeriggio, i IV anno **e i III anno** **si alternano**: uno ai codici alti e uno ai codici bassi, sempre nel rispetto delle regole per anno.
+5. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
 
-**[assunzione]** "12 ore" = il turno del weekend in Ped Urg (una persona copre mattina + pomeriggio) → smonto il primo giorno feriale dopo. Da confermare: quali turni contano come 12h?
+Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
 ---
 
-## 6. Indisponibilità
+## 7. Indisponibilità
 
-Nel foglio **Ferie e Assenze** dell'Excel:
+Ogni specializzando, di qualsiasi anno, inserisce le proprie indisponibilità. **[detto]**
 
-- Tabella `Table11`, intervallo `A3:S96`, **3 righe per giorno** (mattina, pomeriggio, notte), dal 1 al 31 ottobre 2026.
-- Colonne dei 7 medici IV anno: `F:L` nell'ordine Incardona, Somenzi, Cortesia, Aluffi, Topalli, Serra, Spina.
-- Il file contiene solo la lettera `x` (indisponibile).
-
-Dalle foto (mai arrivate in chat) la notazione reale è: **`no M`** = non disponibile la mattina, **`no P`** = non disponibile il pomeriggio, **`X`** = indisponibilità, **`F`** = ferie. **[detto]**
+Notazione: **`no M`** = non disponibile la mattina, **`no P`** = non disponibile il pomeriggio, **`X`** = indisponibilità, **`F`** = ferie. **[detto]**
 
 Modello suggerito: un'indisponibilità ha `tipo` (`X`, `F`, `noM`, `noP`) e copre una o più fasce (`mattina`, `pomeriggio`, `notte`).
 
-Osservazione sui dati del file: il 9 ottobre risultano assenti tutti tranne Spina, che non può fare Ped Urg, quindi Ped Urg non ha nessuno disponibile. Può essere un dato di prova; da verificare con la foto reale.
-
-Conteggio delle `x` presenti nel file (dato non verificato): Somenzi 40, Aluffi 37, Topalli 33, Serra 33, Spina 26, Incardona 19, Cortesia 18.
+I dati di assenza del vecchio file Excel **non si considerano**. **[detto]**
 
 ---
 
-## 7. Parametri di ottobre 2026
+## 8. Parametri del mese e dell'anno
+
+Tutto ciò che cambia da un mese all'altro è un **parametro**, non una regola: date d'esame, assenze collettive di un anno di corso, data di uscita del V anno.
+
+**Parametri dell'anno** (es. 2026/27): primo giorno (01/11/2026), ultimo giorno (31/10/2027), data di uscita del V anno.
+
+**Parametri del mese**: giorni d'esame per anno di corso (tutto il giorno o solo notte), altre assenze collettive, note.
+
+### Ottobre 2026 — ultimo mese del vecchio anno (gestito in Excel, riferimento)
 
 | Parametro | Valore |
 |---|---|
 | Primo giorno del mese | 01/10/2026 |
-| V anno presente fino a | 26/10/2026 (dal 27 assente) |
-| V anno assente (esame) | 5 ottobre tutto il giorno; notte del 4 |
+| V anno finisce | 27/10/2026 incluso (dal 28 assente) |
+| V anno assente (esame) | 5 ottobre tutto il giorno; notte del 4 e del 5 |
 | Altre note del file originale | 21 ottobre: esame (III/IV/V anno) |
 
 **Errore noto nel file Excel attuale:** ho segnato il V anno assente per **l'intera giornata sia del 4 sia del 5 ottobre**. Secondo la regola detta, il 4 è assente solo la notte. **[TODO]** correggere.
 
 **Non gestito:** l'esame del 21 ottobre (III/IV/V anno) non è ancora nei parametri. **[TODO]**
 
+### Novembre 2026 — primo mese del nuovo anno
+
+Parametri ancora da definire (esami, composizione dei gruppi). **[TODO]**
+
 ---
 
-## 8. Come funziona il file Excel attuale (`Turni_Desiderate_PS.xlsx`)
+## 9. Come funziona il file Excel attuale (`Turni_Desiderate_PS.xlsx`)
 
-Il workbook originale ha fogli mensili (Marzo–Settembre 2026), "Desiderate", "Ottobre 2026" (con la panoramica per medico) e "Ferie e Assenze". Ho aggiunto/riscritto:
+Serve da riferimento per ottobre 2026 e per importare lo storico. Il workbook originale ha fogli mensili (Marzo–Settembre 2026), "Desiderate", "Ottobre 2026" (con la panoramica per medico) e "Ferie e Assenze". Ho aggiunto/riscritto:
 
 **`Turni tutti`** — una riga per giorno (righe 4–34).
 
@@ -145,7 +203,7 @@ Il workbook originale ha fogli mensili (Marzo–Settembre 2026), "Desiderate", "
 - Col B–D: PS mattina. B = alti (V anno), C = secondo posto alti, D = verdista. Col E–G: uguale per il pomeriggio.
 - Col H: notte. Col J–K: OBI M/P. Col L: Ped Urg M. Col O: Ped Urg P (nel weekend copia L). Col P–Q: Bambi/Amb. Col R: note (smonto). Col S: suggerimenti.
 - Le celle B–K si riempiono da sole con "V anno", "III anno", "Ruota comune" in base a `WEEKDAY()` e ai parametri V anno (B37 fine presenza, B38:F38 date extra).
-- Menu a tendina con i nomi, Spina esclusa da Ped Urg. Cella **rossa** se il nome scelto è assente, **arancione** se compare due volte lo stesso giorno.
+- Menu a tendina con i nomi. Cella **rossa** se il nome scelto è assente, **arancione** se compare due volte lo stesso giorno.
 - Colori: rosa = III anno, verde = supplement IV anno, giallo = supplement V anno, blu = ruota comune, grigio = weekend/da definire.
 - Nessun cambio colori per i turni PS coperti dal IV anno: la colonna "Verdista" ha già un'intestazione apposta. **[detto]**
 
@@ -157,8 +215,9 @@ Il workbook originale ha fogli mensili (Marzo–Settembre 2026), "Desiderate", "
 
 ### Limiti dell'Excel (motivo del passaggio a web app)
 
+- Gestisce solo il IV anno con nomi fissi: niente anagrafica, niente passaggio d'anno.
 - Il motore è **greedy giorno per giorno**, senza guardare avanti: può arrivare a "nessuno disponibile" anche quando una scelta diversa nei giorni prima avrebbe evitato il buco.
-- Non carica lo **storico luglio–settembre**: bilancia solo dentro il mese.
+- Non carica lo **storico**: bilancia solo dentro il mese.
 - Lo smonto è gestito solo dopo notti di giovedì/sabato (venerdì e domenica). **Non** c'è lo smonto dopo le 12h del weekend.
 - Non assegna i nomi di III e V anno. Non gestisce i 5 turni notte del V anno.
 - Non distingue "M o P" con logica di alternanza alti/bassi: sceglie per fascia solo la disponibilità.
@@ -166,45 +225,54 @@ Il workbook originale ha fogli mensili (Marzo–Settembre 2026), "Desiderate", "
 
 ---
 
-## 9. Cose ancora da ricevere o chiarire
+## 10. Dubbi aperti da rivedere insieme
 
-1. **Le tre foto**: (a) turni di settembre parzialmente compilati e tabella da compilare, (b) indisponibilità con notazione `no M / no P / X / F`, (c) conteggi turni luglio–settembre. Non sono mai arrivate in chat, va caricato il materiale (meglio come CSV/Excel o foto nitide).
-2. Regole per **Bambi** e **Ambulatorio**.
-3. Quali turni contano come **12h** per lo smonto.
-4. Come si assegnano le **5 notti del V anno** e in che modo si combinano con gli smonti.
-5. I turni del weekend per PS alti/verdi: chi li copre e con che regola (nel file restano "in dubbio").
-6. Se nell'app serve **storico multi-mese** e da quando parte il riequilibrio.
+Risolti il 28/09/2026 (due giri): Bambi/Ambulatorio, 12h e smonto, weekend PS, storico, Spina, promozione, nomi, pool, alternanza, assenze Excel, notti V anno, vincolo III anno, ruota comune, 27 ottobre, ingressi a metà anno, regole stabili, smonto lunedì/martedì, rientri, ruota comune fuori dal bilanciamento.
+
+Aperti:
+
+1. Chi copre i **posti PS feriali** che non sono di nessun anno, ora che la ruota comune fa solo le notti lun–ven (sezione 5).
+2. Carico del V anno: con 5 persone e le regole lette alla lettera (PS alti M+P e OBI M+P ogni giorno, 5 notti a testa) ognuno lavora 25–26 giorni al mese e restano OBI scoperti. Da rivedere: OBI anche nel weekend? "5 notti" a persona o in totale?
+
+Restano poi le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
 
 ---
 
-## 10. Funzionalità desiderate per la web app
+## 11. Funzionalità desiderate per la web app
 
 Priorità suggerita:
 
-1. **Motore di assegnazione come codice puro** (TypeScript, senza dipendenze dall'interfaccia, con test): regole per anno, vincoli, indisponibilità, storico. Deve poter girare **nel browser**, così l'hosting gratuito non pesa sul calcolo.
-2. Anagrafica medici gestibile da schermata (anno, attivo, restrizioni, es. Spina senza Ped Urg).
-3. Inserimento disponibilità (griglia mese × fascia; tipo X/F/noM/noP).
-4. Calendario mensile con suggerimenti, modifica manuale, avvisi (assente, doppio turno, smonto violato, nessuno disponibile).
-5. Panoramica per medico (turni per tipo, ferie, storico) e riequilibrio.
-6. Parametri del mese (mese/anno, fine V anno, date d'esame).
-7. Esporta in Excel/PDF per l'ospedale.
-8. Login con ruoli: chi modifica e chi consulta.
+1. **Motore di assegnazione come codice puro** (TypeScript, senza dipendenze dall'interfaccia, con test): regole per anno di corso, vincoli, indisponibilità, storico. Deve poter girare **nel browser**, così l'hosting gratuito non pesa sul calcolo.
+2. **Anagrafica persone** gestibile da schermata: nome, anno di corso, periodo di attività (ingresso/uscita in qualsiasi momento), interesse per Bambi. Nomi modificabili in ogni momento.
+3. **Tabella della composizione corrente**: chi c'è oggi in III, IV e V anno.
+4. **Gestione anno di specializzazione**: apertura del nuovo anno a novembre con promozione automatica III → IV → V, uscita del V anno il 27 ottobre, azzeramento dello storico, archivio degli usciti.
+5. Inserimento disponibilità da parte di **ogni specializzando** (griglia mese × fascia; tipo X/F/noM/noP).
+6. Calendario mensile con suggerimenti per tutti gli anni, modifica manuale, avvisi (assente, doppio turno, smonto violato, nessuno disponibile).
+7. Panoramica per medico (turni per tipo, ferie, storico) e riequilibrio.
+8. Parametri dell'anno e del mese (uscita V anno, date d'esame, assenze collettive).
+9. Esporta in Excel/PDF per l'ospedale.
+10. Login con ruoli: chi modifica e chi consulta.
 
 ---
 
-## 11. Modello dati proposto (bozza)
+## 12. Modello dati proposto (bozza)
 
 ```
-doctors        id, name, year (3|4|5), active, no_slots[]   -- es. Spina: [PEDU_M, PEDU_P, OBI_M, PS_NOTTE]
-availability   id, doctor_id, date, slot (M|P|N), kind (X|F|noM|noP)
-month_params   month (YYYY-MM), v_anno_last_day, v_anno_absence_dates[]
-assignments    id, date, slot_type, doctor_id, source (manual|suggested)
-history        doctor_id, month, slot_type, count            -- da luglio-settembre 2026
+academic_years  id, label ("2026/27"), start_date (2026-11-01), end_date (2027-10-31), v_anno_last_day
+doctors         id, name, bambi_interest (bool)               -- nessuna eccezione personale sulle regole
+enrollments     doctor_id, academic_year_id, year (3|4|5), active_from, active_to
+                -- una riga per persona per anno: gestisce promozione, ingressi e uscite a metà anno
+availability    id, doctor_id, date, slot (M|P|N), kind (X|F|noM|noP)
+month_params    month (YYYY-MM), exam_dates[] (per anno di corso, giorno intero o solo notte), notes
+assignments     id, date, slot_type, doctor_id | "RUOTA_COMUNE", source (manual|suggested)
+history         doctor_id, academic_year_id, month, slot_type, count   -- si azzera a ogni nuovo anno (novembre)
 ```
+
+L'anno di corso di una persona in una certa data si ricava da `enrollments`, non è un campo fisso della persona.
 
 ---
 
-## 12. Dove pubblicarlo gratis
+## 13. Dove pubblicarlo gratis
 
 Verificato a fine settembre 2026 su fonti pubbliche. I piani cambiano spesso: ricontrolla prima di decidere.
 
@@ -230,7 +298,7 @@ Verificato a fine settembre 2026 su fonti pubbliche. I piani cambiano spesso: ri
 
 ---
 
-## 13. Struttura repo suggerita
+## 14. Struttura repo suggerita
 
 ```
 medtools/
@@ -242,7 +310,19 @@ medtools/
   docs/regole.md            # regole in forma testabile
 ```
 
-Primi passi consigliati: 1) trasformare le regole della sezione 4–5 in test unitari; 2) implementare il motore sul solo mese di ottobre con i dati del file; 3) confrontare con le foto quando arrivano; 4) solo dopo, l'interfaccia.
+### Stato (prototipo, 28/09/2026)
+
+- `packages/engine`: motore TS con test (`npm test`). Regole in `src/rules.ts` (`buildDemand`), assegnazione in `src/engine.ts` (`suggestMonth`, `validate`).
+- `apps/web`: Vite + React, dati in `localStorage` del browser (solo nomi fittizi), niente login né database.
+- Pubblicato su Cloudflare Pages, progetto `medtools`: https://medtools.pages.dev. Deploy: `npm run deploy` (richiede `wrangler login`). Node.js su Windows: `C:\Program Files\nodejs`.
+- Assunzioni del prototipo, da rivedere insieme (sono in `buildDemand`):
+  - feriali: IV e III anno in fasce opposte (uno M, uno P), con la fascia che si scambia ogni settimana;
+  - i posti PS feriali non assegnati a nessun anno sono facoltativi (manuali); la ruota comune solo come ripiego per le notti lun–ven;
+  - OBI del V anno anche nel weekend; ambulatorio solo nei feriali;
+  - 5 notti del V anno **per persona**;
+  - Ped Urg mattina del III anno anche nel weekend;
+  - festivi infrasettimanali non gestiti.
+- Calendario: le celle vuote hanno già il colore dell'anno previsto dalla regola; quando si assegna una persona prendono il colore del suo anno.
 
 ---
 
