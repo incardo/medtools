@@ -94,7 +94,8 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
     // OBI 12h: una sola persona per mattina e pomeriggio
     drafts.push({ slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'] });
     // Ped Urg 12h: una sola persona per mattina e pomeriggio
-    drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'] });
+    // Blocco Ped Urg del IV anno: stessa persona da venerdì pomeriggio a lunedì mattina.
+    drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'], prevDaySlot: sunday ? 'PEDU_M' : 'PEDU_P' });
   } else {
     for (const f of ['M', 'P'] as const) {
       const { alti, verdi } = PS_FERIALE[wd][f];
@@ -109,9 +110,14 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
     );
     drafts.push({ slot: 'OBI_M', idx: 0, years: wd === 1 ? [4] : V });
     drafts.push({ slot: 'OBI_P', idx: 0, years: V });
-    drafts.push({ slot: 'PEDU_M', idx: 0, years: [4] });
+    drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], prevDaySlot: wd === 1 ? 'PEDU_M' : undefined });
     drafts.push({ slot: 'PEDU_M', idx: 1, years: [3] });
-    drafts.push({ slot: 'PEDU_P', idx: 0, years: [4] });
+    drafts.push({
+      slot: 'PEDU_P',
+      idx: 0,
+      years: [4],
+      blockAhead: wd === 5 ? [['PEDU_M', 'PEDU_P'], ['PEDU_M', 'PEDU_P'], ['PEDU_M']] : undefined,
+    });
     // Ambulatorio solo giovedì e venerdì
     if (wd === 4 || wd === 5) drafts.push({ slot: 'AMB', idx: 0, years: [3] });
   }

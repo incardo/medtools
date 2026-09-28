@@ -121,6 +121,10 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const score = (p: string, pos: Position): number => {
     let s = countOf(p)[SLOT_INFO[pos.slot].family] * 3 + totalOf(p);
     if (board.weekendRestDue(p, pos.date)) s += 8;
+    // Blocco Ped Urg: meglio chi è disponibile anche nei giorni successivi del blocco.
+    pos.blockAhead?.forEach((slots, i) => {
+      if (roster.unavailableForSlots(p, addDays(pos.date, i + 1), slots)) s += 10;
+    });
     return s + rng() * 1.5;
   };
 
@@ -128,22 +132,30 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     const open = day.filter(
       (pos) => !pos.manualOnly && ![pos.slot, ...pos.alsoSlots].some((s) => lockedKeys.has(keyOf({ ...pos, slot: s }))),
     );
-    // Prima il posto con meno candidati (evita di bruciare le persone scarse).
+    // Chi il giorno prima faceva il posto collegato (blocco Ped Urg, scambio del weekend).
+    const linkedOf = (pos: Position, cands: string[]) => {
+      const prev = pos.prevDaySlot;
+      return prev ? cands.filter((p) => board.slots(p, addDays(pos.date, -1)).includes(prev)) : [];
+    };
+    // Prima i posti che continuano un blocco del giorno prima, poi quelli con meno candidati
+    // (evita di bruciare le persone scarse).
     let pending = open;
     while (pending.length) {
       const people = roster.activeOn(pending[0].date).map((x) => x.person.id);
-      let best: { pos: Position; cands: string[] } | null = null;
+      let best: { pos: Position; cands: string[]; linked: string[] } | null = null;
       for (const pos of pending) {
         const cands = people.filter((p) => canTake(p, pos));
-        if (!best || cands.length < best.cands.length) best = { pos, cands };
+        const linked = linkedOf(pos, cands);
+        const better =
+          !best ||
+          (linked.length > 0 && !best.linked.length) ||
+          (linked.length > 0 === best.linked.length > 0 && cands.length < best.cands.length);
+        if (better) best = { pos, cands, linked };
       }
-      const { pos, cands } = best!;
+      const { pos, cands, linked } = best!;
       pending = pending.filter((p) => p !== pos);
 
       if (cands.length) {
-        // Scambio del weekend: se possibile, chi il giorno prima faceva l'altro posto.
-        const prev = pos.prevDaySlot;
-        const linked = prev ? cands.filter((p) => board.slots(p, addDays(pos.date, -1)).includes(prev)) : [];
         const pool = linked.length ? linked : cands;
         const who = pool.reduce((a, b) => (score(a, pos) <= score(b, pos) ? a : b));
         for (const slot of [pos.slot, ...pos.alsoSlots]) {
@@ -160,9 +172,17 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     }
   }
 
-  // Costo: buchi, smonti del weekend non rispettati, squilibrio dentro ogni anno di corso.
+  // Costo: buchi, smonti del weekend non rispettati, blocchi spezzati, squilibrio dentro ogni anno di corso.
   let restViolations = 0;
   for (const a of out) if (a.who !== RUOTA && board.weekendRestDue(a.who, a.date)) restViolations++;
+  const byKey = new Map(out.map((a) => [keyOf(a), a.who]));
+  let brokenLinks = 0;
+  for (const day of demand) {
+    for (const pos of day) {
+      const who = byKey.get(keyOf(pos));
+      if (pos.prevDaySlot && who && who !== RUOTA && !board.slots(who, addDays(pos.date, -1)).includes(pos.prevDaySlot)) brokenLinks++;
+    }
+  }
   let spread = 0;
   const lastDay = demand[demand.length - 1][0].date;
   for (const year of [3, 4, 5]) {
@@ -170,7 +190,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     spread += variance(ids.map(totalOf)) * 2;
     for (const f of BALANCED) spread += variance(ids.map((p) => countOf(p)[f]));
   }
-  return { assignments: out, holes, cost: holes.length * 1000 + restViolations * 15 + spread };
+  return { assignments: out, holes, cost: holes.length * 1000 + restViolations * 15 + brokenLinks * 20 + spread };
 }
 
 /**

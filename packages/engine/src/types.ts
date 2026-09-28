@@ -82,6 +82,8 @@ export interface Position {
   alsoSlots: SlotCode[];
   /** Preferenza: chi il giorno prima ha fatto questo slot (scambio alti/verdi del III anno nel weekend). */
   prevDaySlot?: SlotCode;
+  /** Giorni successivi dello stesso blocco (Ped Urg ven P → lun M): si preferisce chi è disponibile per tutti. */
+  blockAhead?: SlotCode[][];
   /** Vincolo: non chi il giorno prima ha fatto questo stesso slot (V anno agli alti nel weekend). */
   notPrevDay?: boolean;
   /** Anni di corso che possono coprirlo secondo le regole. */

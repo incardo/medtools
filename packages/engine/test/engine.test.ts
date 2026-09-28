@@ -78,7 +78,7 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect([alti.years, alti.alsoSlots, alti.prevDaySlot]).toEqual([[3], ['PS_ALTI_P'], 'PS_VERDI_M']);
     expect([verdi.years, verdi.alsoSlots, verdi.prevDaySlot]).toEqual([[3], ['PS_VERDI_P'], 'PS_ALTI_M']);
     const sat = buildDemand('2026-11-07', ctx);
-    expect(sat.some((p) => p.prevDaySlot || p.notPrevDay)).toBe(false);
+    expect(sat.some((p) => p.slot.startsWith('PS_') && (p.prevDaySlot || p.notPrevDay))).toBe(false);
     expect(sat.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!.alsoSlots).toEqual(['PS_ALTI_P']);
   });
 
@@ -88,6 +88,16 @@ describe('regole per anno (domanda giornaliera)', () => {
       const we = weekday(date) === 0 || weekday(date) === 6;
       expect(pm.map((p) => p.years)).toEqual(we ? [[4]] : [[4], [3]]);
     }
+  });
+
+  it('Ped Urg: blocco del IV anno da venerdì pomeriggio a lunedì mattina', () => {
+    const pos = (date: string, slot: string) => buildDemand(date, ctx).find((p) => p.slot === slot && p.idx === 0)!;
+    expect(pos('2026-11-06', 'PEDU_P').blockAhead).toEqual([['PEDU_M', 'PEDU_P'], ['PEDU_M', 'PEDU_P'], ['PEDU_M']]); // ven
+    expect(pos('2026-11-07', 'PEDU_M').prevDaySlot).toBe('PEDU_P'); // sab
+    expect(pos('2026-11-08', 'PEDU_M').prevDaySlot).toBe('PEDU_M'); // dom
+    expect(pos('2026-11-09', 'PEDU_M').prevDaySlot).toBe('PEDU_M'); // lun
+    expect(pos('2026-11-10', 'PEDU_M').prevDaySlot).toBeUndefined(); // mar
+    expect(pos('2026-11-05', 'PEDU_P').blockAhead).toBeUndefined(); // gio
   });
 
   it('OBI del V anno anche nel weekend, una sola persona per 12h', () => {
@@ -144,6 +154,20 @@ describe('motore', () => {
       if (list.length === 1) continue;
       expect(pairs).toContain(list.map((a) => a.slot).sort().join());
       expect(weekday(list[0].date) === 0 || weekday(list[0].date) === 6).toBe(true);
+    }
+  });
+
+  it('Ped Urg: stessa persona da venerdì pomeriggio a lunedì mattina, poi smonto il martedì', () => {
+    const who = (date: string, slot: string) => res.assignments.find((a) => a.date === date && a.slot === slot && a.idx === 0)?.who;
+    for (const fri of daysOfMonth('2026-11').filter((d) => weekday(d) === 5)) {
+      const p = who(fri, 'PEDU_P');
+      expect(yearOf(p!)).toBe(4);
+      for (const i of [1, 2]) {
+        expect(who(addDays(fri, i), 'PEDU_M')).toBe(p);
+        expect(who(addDays(fri, i), 'PEDU_P')).toBe(p);
+      }
+      expect(who(addDays(fri, 3), 'PEDU_M')).toBe(p);
+      expect(byPersonDay.get(`${p}|${addDays(fri, 4)}`)).toBeUndefined();
     }
   });
 
