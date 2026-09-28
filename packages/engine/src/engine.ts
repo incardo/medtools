@@ -113,6 +113,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     if (board.slots(p, pos.date).length) return false;
     if (board.slots(p, addDays(pos.date, -1)).includes('PS_NOTTE')) return false;
     if (pos.slot === 'PS_NOTTE' && board.slots(p, addDays(pos.date, 1)).length) return false;
+    if (pos.notPrevDay && board.slots(p, addDays(pos.date, -1)).includes(pos.slot)) return false;
     if (pos.monthlyCap !== undefined && (monthNights[p] ?? 0) >= pos.monthlyCap) return false;
     return true;
   };
@@ -236,7 +237,11 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
 
   for (const day of demand) {
     for (const pos of day) {
-      if (pos.manualOnly || byKey.get(keyOf(pos))?.who) continue;
+      const who = byKey.get(keyOf(pos))?.who;
+      if (pos.notPrevDay && who && who !== RUOTA && board.slots(who, addDays(pos.date, -1)).includes(pos.slot)) {
+        out.push({ date: pos.date, slot: pos.slot, idx: pos.idx, personId: who, level: 'error', message: 'Stessa persona del giorno prima: la domenica cambia' });
+      }
+      if (pos.manualOnly || who) continue;
       out.push({ date: pos.date, slot: pos.slot, idx: pos.idx, level: 'warn', message: 'Nessuno assegnato' });
     }
   }

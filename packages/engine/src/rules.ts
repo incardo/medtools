@@ -79,10 +79,10 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
   const who = (y: Year): Year[] => (y === 5 ? V : [y]);
 
   if (isWeekend(date)) {
-    drafts.push({ slot: 'PS_ALTI_M', idx: 0, years: V });
-    drafts.push({ slot: 'PS_ALTI_P', idx: 0, years: V });
-    // III anno: uno agli alti e uno ai verdi, 12h ciascuno; la domenica si scambiano.
     const sunday = wd === 0;
+    // V anno agli alti 12h; la domenica una persona diversa dal sabato.
+    drafts.push({ slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], notPrevDay: sunday });
+    // III anno: uno agli alti e uno ai verdi, 12h ciascuno; la domenica si scambiano.
     drafts.push({ slot: 'PS_ALTI_M', idx: 1, years: [3], alsoSlots: ['PS_ALTI_P'], prevDaySlot: sunday ? 'PS_VERDI_M' : undefined });
     drafts.push({ slot: 'PS_VERDI_M', idx: 0, years: [3], alsoSlots: ['PS_VERDI_P'], prevDaySlot: sunday ? 'PS_ALTI_M' : undefined });
     // Nel weekend la ruota comune non copre le notti.

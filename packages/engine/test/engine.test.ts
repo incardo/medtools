@@ -70,13 +70,16 @@ describe('regole per anno (domanda giornaliera)', () => {
     const pedu = d.find((p) => p.slot === 'PEDU_M')!;
     expect(pedu.alsoSlots).toEqual(['PEDU_P']);
     expect(d.find((p) => p.slot === 'PEDU_P')).toBeUndefined();
-    expect(d.find((p) => p.slot === 'PS_ALTI_P' && p.idx === 0)!.years).toEqual([5]);
+    const v = d.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!;
+    expect([v.years, v.alsoSlots, v.notPrevDay]).toEqual([[5], ['PS_ALTI_P'], true]);
+    expect(d.find((p) => p.slot === 'PS_ALTI_P')).toBeUndefined();
     const alti = d.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 1)!;
     const verdi = d.find((p) => p.slot === 'PS_VERDI_M')!;
     expect([alti.years, alti.alsoSlots, alti.prevDaySlot]).toEqual([[3], ['PS_ALTI_P'], 'PS_VERDI_M']);
     expect([verdi.years, verdi.alsoSlots, verdi.prevDaySlot]).toEqual([[3], ['PS_VERDI_P'], 'PS_ALTI_M']);
-    expect(d.find((p) => p.slot === 'PS_ALTI_P' && p.idx === 1)).toBeUndefined();
-    expect(buildDemand('2026-11-07', ctx).some((p) => p.prevDaySlot)).toBe(false); // sabato
+    const sat = buildDemand('2026-11-07', ctx);
+    expect(sat.some((p) => p.prevDaySlot || p.notPrevDay)).toBe(false);
+    expect(sat.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!.alsoSlots).toEqual(['PS_ALTI_P']);
   });
 
   it('Ped Urg mattina: un IV e un III anno nei feriali, solo il IV nel weekend', () => {
@@ -139,6 +142,28 @@ describe('motore', () => {
       expect(pairs).toContain(list.map((a) => a.slot).sort().join());
       expect(weekday(list[0].date) === 0 || weekday(list[0].date) === 6).toBe(true);
     }
+  });
+
+  it('weekend: il V anno fa gli alti 12h e la domenica cambia persona', () => {
+    const who = (date: string, slot: string) => res.assignments.find((a) => a.date === date && a.slot === slot && a.idx === 0)?.who;
+    for (const sun of daysOfMonth('2026-11').filter((d) => weekday(d) === 0 && d > '2026-11-01')) {
+      const sat = addDays(sun, -1);
+      for (const d of [sat, sun]) {
+        expect(yearOf(who(d, 'PS_ALTI_M')!)).toBe(5);
+        expect(who(d, 'PS_ALTI_P')).toBe(who(d, 'PS_ALTI_M'));
+      }
+      expect(who(sun, 'PS_ALTI_M')).not.toBe(who(sat, 'PS_ALTI_M'));
+    }
+  });
+
+  it('segnala il V anno uguale sabato e domenica agli alti', () => {
+    const ws = validate(input, [
+      { date: '2026-11-07', slot: 'PS_ALTI_M', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-11-07', slot: 'PS_ALTI_P', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-11-08', slot: 'PS_ALTI_M', idx: 0, who: 'alfa', source: 'manual' },
+    ]);
+    const errs = ws.filter((w) => w.level === 'error');
+    expect(errs.map((w) => [w.date, w.message])).toEqual([['2026-11-08', 'Stessa persona del giorno prima: la domenica cambia']]);
   });
 
   it('weekend: i due III anno del PS si scambiano alti e verdi la domenica', () => {

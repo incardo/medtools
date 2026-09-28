@@ -104,7 +104,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 
 ### V anno **[detto]**
 
-- PS alti mattina (1 turno) e PS alti pomeriggio (1 turno) anche weekend.
+- PS alti mattina (1 turno) e PS alti pomeriggio (1 turno); nel weekend un'unica persona per 12h, diversa tra sabato e domenica (vedi "Weekend in PS").
 - **Lunedì e venerdì pomeriggio** PS **bassi** (verdi) al posto degli alti. **[detto]**
 - OBI mattina **e** pomeriggio, **anche nel weekend**. **[detto]**
 - 5 notti PS nel mese, suggerite dal motore in modo **bilanciato** tra le persone del V anno. **[detto]**
@@ -126,6 +126,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 ### Weekend in PS **[detto]**
 
 - PS codici alti: **V anno** e **un III anno**.
+- Il V anno fa gli alti **12h**: la stessa persona copre mattina e pomeriggio. La **domenica** lo sostituisce **un altro V anno** (mai la stessa persona del sabato). **[detto]**
 - PS codici bassi (verdi): **un III anno**.
 - I due III anno fanno 12h ciascuno (alti e verdi) e la domenica si scambiano. **[detto]** Nel motore lo scambio è una preferenza: se uno dei due non è disponibile la domenica, il posto va a un altro III anno.
 

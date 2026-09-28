@@ -212,7 +212,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                     const k = keyOf({ date, ...col });
                     const cell = cells[k];
                     const pos = day.find((p) => p.slot === col.slot && p.idx === col.idx);
-                    const mirror = day.find((p) => p.alsoSlots.includes(col.slot));
+                    const mirror = day.find((p) => p.idx === col.idx && p.alsoSlots.includes(col.slot));
                     const ws = warnByKey.get(k) ?? [];
                     const year = cell?.who && cell.who !== RUOTA ? roster.yearOf(cell.who, date) : null;
                     // Colore dell'anno previsto dalla regola, anche se la cella è ancora vuota.

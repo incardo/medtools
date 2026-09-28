@@ -82,6 +82,8 @@ export interface Position {
   alsoSlots: SlotCode[];
   /** Preferenza: chi il giorno prima ha fatto questo slot (scambio alti/verdi del III anno nel weekend). */
   prevDaySlot?: SlotCode;
+  /** Vincolo: non chi il giorno prima ha fatto questo stesso slot (V anno agli alti nel weekend). */
+  notPrevDay?: boolean;
   /** Anni di corso che possono coprirlo secondo le regole. */
   years: Year[];
   /** Se nessuno è disponibile, si scrive "Ruota comune" (solo notti lun–ven). */
