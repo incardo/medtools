@@ -1,0 +1,225 @@
+import type { Borders, Cell as XCell, Fill, Worksheet } from 'exceljs';
+import { COLUMNS, RUOTA, countAssignments, daysOfMonth, isWeekend, keyOf, type Family, type Position, type Roster, type Year } from '@medtools/engine';
+import { YEAR_LABEL, cellsToAssignments, type AppData, type Cell } from './store';
+import { dayLabel, monthLabel, shortDate } from './format';
+
+/** Stessi colori dell'app (styles.css), in ARGB. */
+const COLOR = {
+  5: 'FFFFF1C2',
+  4: 'FFD8F3DC',
+  3: 'FFFDE2EA',
+  ruota: 'FFDBEAFE',
+  weekend: 'FFEEF0F4',
+  unused: 'FFF3F4F6',
+  head: 'FF1F3B63',
+  subhead: 'FFDCE3EE',
+  border: 'FFB8C0CC',
+  muted: 'FF6B7482',
+} as const;
+
+const FAMILIES: [Family, string][] = [
+  ['PS_ALTI', 'PS alti'],
+  ['PS_VERDI', 'PS verdi'],
+  ['PS_NOTTE', 'Notti PS'],
+  ['OBI', 'OBI'],
+  ['PEDU', 'Ped Urg'],
+  ['AMB', 'Ambulatorio'],
+  ['BAMBI', 'Bambi'],
+];
+
+const fill = (argb: string): Fill => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+const thin = { style: 'thin' as const, color: { argb: COLOR.border } };
+const medium = { style: 'medium' as const, color: { argb: 'FF5B6675' } };
+const box: Partial<Borders> = { top: thin, left: thin, bottom: thin, right: thin };
+
+function title(ws: Worksheet, text: string, subtitle: string, width: number) {
+  ws.mergeCells(1, 1, 1, width);
+  ws.getCell(1, 1).value = text;
+  ws.getCell(1, 1).font = { size: 16, bold: true, color: { argb: COLOR.head } };
+  ws.getRow(1).height = 26;
+  ws.mergeCells(2, 1, 2, width);
+  ws.getCell(2, 1).value = subtitle;
+  ws.getCell(2, 1).font = { size: 10, italic: true, color: { argb: COLOR.muted } };
+}
+
+function headCell(c: XCell, value: string, dark: boolean) {
+  c.value = value;
+  c.font = { bold: true, size: dark ? 11 : 10, color: { argb: dark ? 'FFFFFFFF' : COLOR.head } };
+  c.fill = fill(dark ? COLOR.head : COLOR.subhead);
+  c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  c.border = box;
+}
+
+export interface ExcelInput {
+  data: AppData;
+  month: string;
+  demand: Position[][];
+  cells: Record<string, Cell>;
+  roster: Roster;
+  headers: { group: string; cols: string[] }[];
+}
+
+export async function exportExcel({ data, month, demand, cells, roster, headers }: ExcelInput) {
+  const { default: ExcelJS } = await import('exceljs');
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'MedTools';
+  wb.created = new Date();
+  const names = new Map(data.people.map((p) => [p.id, p.name]));
+  const ruotaNames = data.ruotaNames ?? {};
+  const today = shortDate(new Date().toISOString().slice(0, 10));
+  const label = monthLabel(month);
+  const Label = label[0].toUpperCase() + label.slice(1);
+
+  // ---------- Foglio 1: calendario ----------
+  const ws = wb.addWorksheet('Turni', {
+    views: [{ state: 'frozen', xSplit: 1, ySplit: 5 }],
+    pageSetup: {
+      paperSize: 9, // A4
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+      printTitlesRow: '4:5',
+    },
+    headerFooter: { oddFooter: `&L&8Turni specializzandi · ${label}&R&8Pagina &P di &N` },
+  });
+
+  // Colonne: giorno + slot del calendario, con la ruota comune subito dopo la notte.
+  type Col = { kind: 'slot'; slot: (typeof COLUMNS)[number] } | { kind: 'ruota' };
+  const cols: Col[] = COLUMNS.flatMap((c): Col[] => (c.slot === 'PS_NOTTE' ? [{ kind: 'slot', slot: c }, { kind: 'ruota' }] : [{ kind: 'slot', slot: c }]));
+  const width = cols.length + 1;
+  title(ws, `Turni specializzandi · ${Label}`, `Pronto Soccorso, OBI, Pediatria d'Urgenza · aggiornato al ${today}`, width);
+
+  ws.getColumn(1).width = 9;
+  for (let i = 2; i <= width; i++) ws.getColumn(i).width = 13.5;
+
+  // Intestazioni su due righe: gruppo e sottocolonna. Un bordo spesso separa i gruppi.
+  const groupStarts = new Set<number>();
+  ws.mergeCells(4, 1, 5, 1);
+  headCell(ws.getCell(4, 1), 'Giorno', true);
+  let col = 2;
+  for (const h of headers) {
+    groupStarts.add(col);
+    ws.mergeCells(4, col, 4, col + h.cols.length - 1);
+    headCell(ws.getCell(4, col), h.group, true);
+    h.cols.forEach((c, i) => headCell(ws.getCell(5, col + i), c, false));
+    col += h.cols.length;
+  }
+  ws.getRow(4).height = 20;
+  ws.getRow(5).height = 18;
+
+  demand.forEach((day, i) => {
+    const date = day[0].date;
+    const r = ws.getRow(6 + i);
+    r.height = 18;
+    const weekend = isWeekend(date);
+    const { dow, day: dd } = dayLabel(date);
+    const d = r.getCell(1);
+    d.value = `${dow} ${dd}`;
+    d.font = { bold: true, color: { argb: weekend ? 'FFB42318' : COLOR.head } };
+    d.fill = fill(weekend ? COLOR.weekend : 'FFFFFFFF');
+    d.alignment = { vertical: 'middle' };
+    d.border = box;
+
+    cols.forEach((c, j) => {
+      const x = r.getCell(j + 2);
+      let text = '';
+      let bg: string = weekend ? COLOR.weekend : 'FFFFFFFF';
+      if (c.kind === 'ruota') {
+        text = ruotaNames[date] ?? '';
+        if (text) bg = COLOR.ruota;
+      } else {
+        const { slot, idx } = c.slot;
+        const foreseen = day.some((p) => (p.slot === slot || p.alsoSlots.includes(slot)) && p.idx === idx);
+        const who = cells[keyOf({ date, slot, idx })]?.who;
+        if (who === RUOTA) {
+          text = 'Ruota comune';
+          bg = COLOR.ruota;
+        } else if (who) {
+          text = names.get(who) ?? '?';
+          const y = roster.yearOf(who, date);
+          if (y) bg = COLOR[y];
+        } else if (!foreseen) {
+          bg = COLOR.unused;
+        }
+      }
+      x.value = text;
+      x.fill = fill(bg);
+      x.font = { size: 10 };
+      x.alignment = { horizontal: 'center', vertical: 'middle', shrinkToFit: true };
+      x.border = groupStarts.has(j + 2) ? { ...box, left: medium } : box;
+    });
+    // Separatore tra una settimana e l'altra
+    if (dow === 'dom') for (let j = 1; j <= width; j++) ws.getCell(6 + i, j).border = { ...ws.getCell(6 + i, j).border, bottom: medium };
+  });
+
+  // Legenda sotto la tabella
+  const lr = 6 + demand.length + 1;
+  ws.getCell(lr, 1).value = 'Legenda';
+  ws.getCell(lr, 1).font = { bold: true, size: 10, color: { argb: COLOR.muted } };
+  const legend: [string, string][] = [
+    ['V anno', COLOR[5]],
+    ['IV anno', COLOR[4]],
+    ['III anno', COLOR[3]],
+    ['Ruota comune', COLOR.ruota],
+    ['Non previsto', COLOR.unused],
+  ];
+  legend.forEach(([t, argb], i) => {
+    const c = ws.getCell(lr, 2 + i);
+    c.value = t;
+    c.fill = fill(argb);
+    c.font = { size: 9 };
+    c.alignment = { horizontal: 'center' };
+    c.border = box;
+  });
+
+  // ---------- Foglio 2: riepilogo per persona ----------
+  const rs = wb.addWorksheet('Riepilogo', {
+    views: [{ state: 'frozen', ySplit: 4 }],
+    pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '4:4' },
+  });
+  const sumHead = ['Persona', 'Anno', ...FAMILIES.map(([, l]) => l), 'Totale', 'Ferie (gg)'];
+  title(rs, `Riepilogo turni · ${Label}`, 'Turni del mese per persona. Il totale esclude Bambi; la ruota comune non è conteggiata.', sumHead.length);
+  sumHead.forEach((h, i) => headCell(rs.getCell(4, i + 1), h, true));
+  rs.getRow(4).height = 20;
+  rs.getColumn(1).width = 22;
+  rs.getColumn(2).width = 8;
+  for (let i = 3; i <= sumHead.length; i++) rs.getColumn(i).width = 11;
+
+  const counts = countAssignments(cellsToAssignments(cells));
+  const days = daysOfMonth(month);
+  const people = data.people
+    .map((p) => {
+      const first = days.find((d) => roster.yearOf(p.id, d));
+      return first ? { p, year: roster.yearOf(p.id, first)! as Year } : null;
+    })
+    .filter((x) => x !== null)
+    .sort((a, b) => b.year - a.year || a.p.name.localeCompare(b.p.name));
+
+  people.forEach(({ p, year }, i) => {
+    const c = counts[p.id] ?? {};
+    const total = FAMILIES.filter(([f]) => f !== 'BAMBI').reduce((s, [f]) => s + (c[f] ?? 0), 0);
+    const ferie = days.filter((d) => data.absences[`${p.id}|${d}`] === 'F').length;
+    const row = rs.getRow(5 + i);
+    row.values = [p.name, YEAR_LABEL[year], ...FAMILIES.map(([f]) => c[f] ?? 0), total, ferie];
+    row.eachCell({ includeEmpty: true }, (x, n) => {
+      x.border = box;
+      x.font = { size: 10, bold: n === 1 || n === sumHead.length - 1 };
+      x.alignment = { horizontal: n === 1 ? 'left' : 'center', vertical: 'middle' };
+      if (n <= 2) x.fill = fill(COLOR[year]);
+      if (n > 2 && x.value === 0) x.font = { size: 10, color: { argb: 'FFB8C0CC' } };
+    });
+    // Riga più spessa quando cambia l'anno di corso
+    if (people[i + 1] && people[i + 1].year !== year) row.eachCell({ includeEmpty: true }, (x) => (x.border = { ...box, bottom: medium }));
+  });
+
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Turni ${Label}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

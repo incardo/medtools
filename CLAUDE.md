@@ -343,6 +343,7 @@ medtools/
   - lo scambio alti/verdi del III anno la domenica è una preferenza, non un vincolo;
   - 5 notti del V anno **per persona**;
   - festivi infrasettimanali non gestiti.
+- Export Excel (`apps/web/src/exportExcel.ts`, libreria ExcelJS caricata solo al clic): foglio "Turni" formattato per la stampa (A4 orizzontale, colori per anno, legenda) e foglio "Riepilogo" con i turni per persona.
 - Calendario: le celle vuote hanno già il colore dell'anno previsto dalla regola; quando si assegna una persona prendono il colore del suo anno.
 
 ---

@@ -20,6 +20,7 @@ import {
 } from '@medtools/engine';
 import { YEAR_LABEL, cellsToAssignments, engineInput, type Cell } from '../store';
 import { dayLabel, monthLabel, type ViewProps } from '../format';
+import { exportExcel } from '../exportExcel';
 
 const HEADERS: { group: string; cols: string[] }[] = [
   { group: 'PS mattina', cols: ['Alti', 'Alti', 'Verdi'] },
@@ -111,29 +112,16 @@ export function CalendarView({ data, setData, month }: ViewProps) {
     }, 20);
   };
 
-  const exportCsv = () => {
-    const header = [
-      'Data',
-      ...COLUMNS.flatMap((c) => {
-        const label = `${SLOT_INFO[c.slot].label}${c.idx ? ' 2' : ''}`;
-        return c.slot === 'PS_NOTTE' ? [label, 'Ruota comune'] : [label];
-      }),
-    ];
-    const rows = daysOfMonth(month).map((date) => [
-      date,
-      ...COLUMNS.flatMap((c) => {
-        const who = cells[keyOf({ date, ...c })]?.who;
-        const name = who === RUOTA ? 'Ruota comune' : (names.get(who ?? '') ?? '');
-        return c.slot === 'PS_NOTTE' ? [name, ruotaNames[date] ?? ''] : [name];
-      }),
-    ]);
-    const csv = [header, ...rows].map((r) => r.map((x) => `"${x.replace(/"/g, '""')}"`).join(';')).join('\n');
-    const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `turni-${month}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const [exporting, setExporting] = useState(false);
+  const exportXlsx = async () => {
+    setExporting(true);
+    try {
+      await exportExcel({ data, month, demand, cells, roster, headers: HEADERS });
+    } catch (e) {
+      alert(`Export non riuscito: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -158,7 +146,9 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         >
           Svuota mese
         </button>
-        <button onClick={exportCsv}>Esporta CSV</button>
+        <button onClick={exportXlsx} disabled={exporting}>
+          {exporting ? 'Preparo il file…' : 'Esporta Excel'}
+        </button>
       </div>
 
       <div className="stats">
