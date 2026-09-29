@@ -3,40 +3,28 @@ import { cellsToAssignments, type AppData } from './store';
 import type { HeadNode } from './calendarHeaders';
 
 /**
- * Colonne della panoramica (app ed Excel): stesse voci del calendario, per fascia e tipo e non per singolo posto.
- * Un turno da 12h conta come due turni (mattina + pomeriggio).
+ * Colonne della panoramica (app ed Excel), per tipo di turno. In PS e OBI mattina e pomeriggio sono equivalenti:
+ * si contano insieme, distinguendo solo alti e verdi. Un turno da 12h conta come due turni.
  */
-export const SUMMARY_SLOTS: SlotCode[] = [
-  'PS_ALTI_M',
-  'PS_VERDI_M',
-  'PS_ALTI_P',
-  'PS_VERDI_P',
-  'PS_NOTTE',
-  'OBI_M',
-  'OBI_P',
-  'PEDU_M',
-  'PEDU_P',
-  'BAMBI',
-  'AMB',
+export const SUMMARY_TURNS: { key: string; slots: SlotCode[] }[] = [
+  { key: 'PS_ALTI', slots: ['PS_ALTI_M', 'PS_ALTI_P'] },
+  { key: 'PS_VERDI', slots: ['PS_VERDI_M', 'PS_VERDI_P'] },
+  { key: 'PS_NOTTE', slots: ['PS_NOTTE'] },
+  { key: 'OBI', slots: ['OBI_M', 'OBI_P'] },
+  { key: 'PEDU_M', slots: ['PEDU_M'] },
+  { key: 'PEDU_P', slots: ['PEDU_P'] },
+  { key: 'BAMBI', slots: ['BAMBI'] },
+  { key: 'AMB', slots: ['AMB'] },
 ];
 
 /** Colonne dopo i turni, nell'ordine dell'intestazione. */
 export const SUMMARY_EXTRA = ['total', 'weekend', 'ferie', 'indisp', 'parziali'] as const;
 export type SummaryExtra = (typeof SUMMARY_EXTRA)[number];
 
-const empty = (label = ''): HeadNode => ({ label, children: [{ label: '' }] });
-
 export const SUMMARY_HEADERS: HeadNode[] = [
-  {
-    label: 'PS',
-    children: [
-      { label: 'Mattina', children: [{ label: 'Alti' }, { label: 'Verdi' }] },
-      { label: 'Pomeriggio', children: [{ label: 'Alti' }, { label: 'Verdi' }] },
-      empty('Notte'),
-    ],
-  },
-  { label: 'OBI', children: [empty('Mattina'), empty('Pomeriggio')] },
-  { label: 'Ped Urg', children: [empty('Mattina'), empty('Pomeriggio')] },
+  { label: 'PS', children: [{ label: 'Alti' }, { label: 'Verdi' }, { label: 'Notte' }] },
+  { label: 'OBI' },
+  { label: 'Ped Urg', children: [{ label: 'Mattina' }, { label: 'Pomeriggio' }] },
   { label: 'Bambi' },
   { label: 'Amb' },
   { label: 'Totale' },
@@ -83,12 +71,16 @@ export function summarize(data: AppData, months: string[]): Record<string, Perso
   return out;
 }
 
-export type SummaryCol = SlotCode | SummaryExtra;
-export const SUMMARY_COLS: SummaryCol[] = [...SUMMARY_SLOTS, ...SUMMARY_EXTRA];
-const isSlot = (col: SummaryCol): col is SlotCode => (SUMMARY_SLOTS as string[]).includes(col);
+export type SummaryCol = string;
+export const SUMMARY_COLS: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key), ...SUMMARY_EXTRA];
+/** Slot contati in una colonna di turni; undefined per totale, weekend e assenze. */
+export const turnSlots = (col: SummaryCol) => SUMMARY_TURNS.find((t) => t.key === col)?.slots;
 
-export const summaryValue = (s: PersonSummary | undefined, col: SummaryCol): number =>
-  !s ? 0 : isSlot(col) ? (s.slots[col] ?? 0) : s[col];
+export function summaryValue(s: PersonSummary | undefined, col: SummaryCol): number {
+  if (!s) return 0;
+  const slots = turnSlots(col);
+  return slots ? slots.reduce((n, x) => n + (s.slots[x] ?? 0), 0) : s[col as SummaryExtra];
+}
 
 /** Turni che le regole prevedono per ogni anno di corso nel mese (Bambi escluso: dipende dall'interesse). */
 export function slotsByYear(demand: Position[][]): Record<Year, Set<SlotCode>> {

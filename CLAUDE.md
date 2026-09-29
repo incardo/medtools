@@ -353,7 +353,7 @@ medtools/
   - festivi infrasettimanali non gestiti.
 - Export Excel (`apps/web/src/exportExcel.ts`, libreria ExcelJS caricata solo al clic): foglio "Turni" formattato per la stampa (A4 orizzontale, colori per anno, legenda) e foglio "Riepilogo" con i turni per persona.
 - Calendario: le celle vuote hanno già il colore dell'anno previsto dalla regola; quando si assegna una persona prendono il colore del suo anno.
-- Panoramica (e foglio "Riepilogo" dell'Excel): colonne per fascia e tipo come il calendario, più Totale (senza Bambi), Weekend (giorni di sab/dom lavorati) e Assenze. Un turno da 12h conta come **due turni**. **[detto]** Interruttore Mese / Anno fino al mese scelto; righe raggruppate per anno di corso con la media; celle colorate se lo scarto dalla media del proprio anno è di almeno 1 turno; "·" per i turni non previsti per quell'anno. Colonne e conteggi in `apps/web/src/summary.ts`.
+- Panoramica (e foglio "Riepilogo" dell'Excel): colonne per tipo di turno; in PS mattina e pomeriggio sono **equivalenti** e si contano insieme (restano separati alti, verdi e notte) **[detto]**; OBI in un'unica colonna (mattina + pomeriggio) **[detto]**; Ped Urg per fascia; più Totale (senza Bambi), Weekend (giorni di sab/dom lavorati) e Assenze. Un turno da 12h conta come **due turni**. **[detto]** Interruttore Mese / Anno fino al mese scelto; righe raggruppate per anno di corso con la media; celle colorate se lo scarto dalla media del proprio anno è di almeno 1 turno; "·" per i turni non previsti per quell'anno. Colonne e conteggi in `apps/web/src/summary.ts`.
 
 ---
 

@@ -1,14 +1,14 @@
 import { Fragment, useMemo, useState } from 'react';
-import { daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Person, type SlotCode, type Year } from '@medtools/engine';
+import { daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Person, type Year } from '@medtools/engine';
 import { YEAR_LABEL, academicYearFor, engineInput } from '../store';
 import { monthLabel, type ViewProps } from '../format';
-import { HEADER_DEPTH, groupEnds, headerRows } from '../calendarHeaders';
-import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_SLOTS, slotsByYear, summarize, summaryValue, type SummaryCol } from '../summary';
+import { groupEnds, headerRows } from '../calendarHeaders';
+import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_TURNS, slotsByYear, summarize, summaryValue, turnSlots, type SummaryCol } from '../summary';
 
 const HEAD_ROWS = headerRows(SUMMARY_HEADERS);
 const ENDS = groupEnds(HEAD_ROWS);
 /** Colonne confrontate con la media del proprio anno di corso (le assenze no). */
-const BALANCED: SummaryCol[] = [...SUMMARY_SLOTS, 'total', 'weekend'];
+const BALANCED: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key), 'total', 'weekend'];
 
 type Mode = 'mese' | 'anno';
 
@@ -46,7 +46,7 @@ export function OverviewView({ data, month }: ViewProps) {
       .map((year) => {
         const people = byYear.get(year)!.sort((a, b) => a.name.localeCompare(b.name));
         const pertinent = (p: Person, col: SummaryCol) =>
-          col === 'BAMBI' ? p.bambiInterest : (SUMMARY_SLOTS as string[]).includes(col) ? expected[year].has(col as SlotCode) : true;
+          col === 'BAMBI' ? p.bambiInterest : (turnSlots(col)?.some((s) => expected[year].has(s)) ?? true);
         // Media e scarto massimo per colonna, solo tra chi quel turno lo fa per regola.
         const stats = new Map<SummaryCol, { mean: number; maxDev: number }>();
         for (const col of BALANCED) {
@@ -75,7 +75,7 @@ export function OverviewView({ data, month }: ViewProps) {
         </div>
       </div>
       <p className="hint">
-        Turni per fascia e tipo; un turno da 12h conta come due (mattina + pomeriggio). <b>Weekend</b> = giorni di sabato o domenica
+        Turni per tipo; in PS e OBI mattina e pomeriggio si contano insieme (in PS alti e verdi restano separati). Un turno da 12h conta come due. <b>Weekend</b> = giorni di sabato o domenica
         lavorati. Il totale esclude Bambi; la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
       <div className="legend">
@@ -93,7 +93,7 @@ export function OverviewView({ data, month }: ViewProps) {
             {HEAD_ROWS.map((row, r) => (
               <tr key={r}>
                 {r === 0 && (
-                  <th rowSpan={HEADER_DEPTH} className="sticky">
+                  <th rowSpan={HEAD_ROWS.length} className="sticky">
                     Persona
                   </th>
                 )}
