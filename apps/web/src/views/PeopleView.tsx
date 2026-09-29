@@ -112,11 +112,13 @@ export function PeopleView({ data, setData, month }: ViewProps) {
           <tbody>
             {[...enrolledThisYear]
               .sort((a, b) => b.year - a.year || nameOf(a.personId).localeCompare(nameOf(b.personId)))
-              .map((e) => {
+              .map((e, i, all) => {
                 const p = data.people.find((x) => x.id === e.personId);
                 if (!p) return null;
+                // Riga del colore dell'anno di corso, con una linea più spessa quando cambia l'anno.
+                const sep = i > 0 && all[i - 1].year !== e.year ? ' sep' : '';
                 return (
-                  <tr key={`${e.personId}-${data.enrollments.indexOf(e)}`}>
+                  <tr key={`${e.personId}-${data.enrollments.indexOf(e)}`} className={`y${e.year}${sep}`}>
                     <td>
                       <input
                         value={p.name}

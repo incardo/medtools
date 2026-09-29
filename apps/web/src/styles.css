@@ -606,6 +606,9 @@ td.strong {
 .people td {
   padding: 4px 6px;
 }
+.people tr.sep > td {
+  border-top: 2px solid var(--muted);
+}
 .people input:not([type='checkbox']) {
   width: 140px;
 }
