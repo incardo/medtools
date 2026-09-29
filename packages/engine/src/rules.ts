@@ -28,6 +28,7 @@ export const COLUMNS: { slot: SlotCode; idx: number }[] = [
   { slot: 'PS_OPZ_P', idx: 0 },
   { slot: 'PS_VERDI_P', idx: 0 },
   { slot: 'PS_NOTTE', idx: 0 },
+  { slot: 'PS_NOTTE', idx: 1 },
   { slot: 'OBI_M', idx: 0 },
   { slot: 'OBI_P', idx: 0 },
   { slot: 'PEDU_M', idx: 0 },
@@ -113,6 +114,9 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
         ? { slot: 'PS_NOTTE', idx: 0, years: [4] }
         : { slot: 'PS_NOTTE', idx: 0, years: V },
     );
+    // Secondo posto di notte (lun–ven): ruota comune oppure un altro specializzando, solo a mano.
+    // Se è uno specializzando conta come una notte, anche nel bilanciamento.
+    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: [5, 4, 3], manualOnly: true });
     drafts.push({ slot: 'OBI_M', idx: 0, years: wd === 1 ? [4] : V });
     drafts.push({ slot: 'OBI_P', idx: 0, years: V });
     drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], prevDaySlot: wd === 1 ? 'PEDU_M' : undefined });

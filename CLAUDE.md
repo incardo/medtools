@@ -157,7 +157,8 @@ III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
 - Ruota comune copre **solo le notti in PS dal lunedì al venerdì**. **[detto]** (sostituisce la regola precedente "non può coprire Ped Urg né OBI")
 - Nel motore è il ripiego per le notti lun–ven quando nessuno dell'anno previsto è disponibile. **[assunzione]**
 - La ruota comune **non entra** nel bilanciamento né nella panoramica per medico. **[detto]**
-- Nel calendario, accanto a "Notte PS", c'è una colonna **"Ruota comune"** dove si scrive a mano il nome (testo libero, solo notti lun–ven). **[detto]** Il motore non la legge; finisce nell'export CSV.
+- Nel calendario, accanto a "Notte PS", c'è una colonna **"Ruota comune / altro"** (secondo posto di notte, solo lun–ven, solo a mano): si sceglie **la ruota comune** (e si scrive il nome, testo libero) **oppure un altro specializzando disponibile**, di qualsiasi anno, perché la ruota comune potrebbe non coprire tutte le notti. **[detto]** (29/09/2026)
+- Uno specializzando nel secondo posto di notte **conta come una notte**: nella panoramica e nel **bilanciamento** (il motore lo legge come turno manuale). Valgono le regole trasversali (smonto dopo la notte, un turno al giorno). **[detto]** In codice: slot `PS_NOTTE` con `idx` 1, `manualOnly`; il nome della ruota comune resta in `ruotaNames`.
 
 ---
 

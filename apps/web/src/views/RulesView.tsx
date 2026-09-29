@@ -30,20 +30,26 @@ function leafPaths(nodes: HeadNode[], prefix: string[] = []): string[] {
     return n.children ? leafPaths(n.children, path) : [path.join(' · ')];
   });
 }
-const COLUMN_LABELS = leafPaths(HEADERS).filter((l) => !l.endsWith('Ruota comune'));
+const COLUMN_LABELS = leafPaths(HEADERS);
 
 const FASCIA: Record<Fascia, string> = { M: 'mattina', P: 'pomeriggio', N: 'notte' };
 const ALL_SLOTS = Object.keys(SLOT_INFO) as SlotCode[];
 
 function notes(pos: Position): string[] {
+  // Posti compilati solo a mano: il motore non li riempie.
+  if (pos.manualOnly) {
+    if (pos.slot === 'BAMBI') return ['a mano, solo interessati', 'fuori bilanciamento'];
+    if (pos.slot.startsWith('PS_OPZ')) return ['a mano, volontari', 'fuori bilanciamento'];
+    if (pos.slot === 'PS_NOTTE') return ['a mano: ruota comune', 'o altro specializzando', '(conta come notte)'];
+    return ['a mano'];
+  }
   const out: string[] = [];
   if (pos.alsoSlots.length) out.push('12h');
   if (pos.blockAhead) out.push('inizio blocco');
   else if (pos.prevDaySlot?.startsWith('PEDU')) out.push('blocco');
   else if (pos.prevDaySlot) out.push('scambio col sabato');
   if (pos.notPrevDay) out.push('≠ sabato');
-  if (pos.ruotaFallback) out.push('o ruota comune');
-  if (pos.manualOnly) out.push('facoltativo, a mano');
+  if (pos.ruotaFallback) out.push('se nessuno: ruota comune');
   return out;
 }
 
@@ -61,8 +67,8 @@ export function RulesView({ data, month }: ViewProps) {
         <h2>Regole</h2>
       </div>
       <p className="hint">
-        Le regole che il motore segue quando premi <b>Genera suggerimenti</b>. Tabelle e pesi sono letti direttamente dal codice del
-        motore, quindi questa pagina è sempre aggiornata.
+        Le regole che il motore segue quando premi <b>Genera suggerimenti</b>. Le tabelle (chi copre ogni posto, vincoli, indisponibilità,
+        pesi e numero di tentativi) sono lette direttamente dal codice del motore, quindi sono sempre aggiornate.
       </p>
 
       <h3>Chi copre ogni posto (settimana tipo)</h3>
@@ -150,6 +156,11 @@ export function RulesView({ data, month }: ViewProps) {
           persone del V anno; il IV anno il giovedì e il sabato. Se nessuno è disponibile, lun–ven va la <b>ruota comune</b>.
         </li>
         <li>
+          <b>Secondo posto di notte</b> (lun–ven), a mano: la <b>ruota comune</b> (si scrive il nome) oppure <b>un altro specializzando</b>{' '}
+          disponibile, per le notti che la ruota comune non riesce a coprire. Uno specializzando in questo posto conta come una notte, nella
+          panoramica e nel bilanciamento, e valgono per lui le regole per tutti (smonto compreso).
+        </li>
+        <li>
           <b>PS alti (opz.)</b>, mattina e pomeriggio dal lunedì al venerdì: un posto in più per chi vuole fare qualche turno extra. Si compila
           a mano, lo può prendere chiunque, il motore non lo riempie e non entra nel bilanciamento né nel totale. Valgono comunque le regole
           per tutti (un turno al giorno, smonto dopo la notte, indisponibilità).
@@ -171,8 +182,8 @@ export function RulesView({ data, month }: ViewProps) {
           );
         })}
         <li>
-          <span className="chip ruota">Ruota comune</span> solo notti in PS dal lunedì al venerdì, come ripiego quando nessuno dell'anno previsto è
-          disponibile. Non entra nel bilanciamento né nella panoramica.
+          <span className="chip ruota">Ruota comune</span> solo notti in PS dal lunedì al venerdì: nel secondo posto di notte, oppure nel primo
+          come ripiego quando nessuno dell'anno previsto è disponibile. Non entra nel bilanciamento né nella panoramica.
         </li>
       </ul>
 
@@ -184,10 +195,14 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>Smonto dopo il weekend</b>, dove possibile: chi lavora in PS sabato e domenica non lavora il lunedì; chi fa Ped Urg 12h sabato e
-          domenica non lavora il martedì.
+          domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto.
         </li>
+        <li>Un V anno che fa 12h il sabato può fare la notte della domenica.</li>
         <li>Nessuno riceve turni nei giorni in cui non è attivo (prima dell'ingresso o dopo l'uscita).</li>
-        <li>I turni scritti a mano non vengono mai toccati dal motore.</li>
+        <li>
+          I turni scritti a mano non vengono mai toccati dal motore e <b>contano nel bilanciamento</b> (tranne Bambi e alti opzionali). Il
+          motore ne tiene conto anche per le regole sopra: per esempio chi è inserito a mano di notte ha lo smonto il giorno dopo.
+        </li>
       </ul>
 
       <h3>Indisponibilità</h3>
@@ -231,7 +246,7 @@ export function RulesView({ data, month }: ViewProps) {
             <tbody>
               <tr>
                 <td>+{WEIGHTS.family}</td>
-                <td>per ogni turno dello stesso tipo già fatto (PS alti, PS verdi, notti, OBI, Ped Urg, Amb)</td>
+                <td>per ogni turno dello stesso tipo già fatto (PS alti, PS verdi, notti, OBI, Ped Urg, Amb; non Bambi né alti opzionali)</td>
               </tr>
               <tr>
                 <td>+{WEIGHTS.total}</td>
@@ -288,7 +303,8 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>Storico.</b> I conteggi partono dai mesi precedenti dello stesso anno di specializzazione (da novembre) e si azzerano a novembre.
-          Chi entra a metà anno parte da zero, senza essere messo in pari. Un turno da 12h conta come due turni.
+          Chi entra a metà anno parte da zero, senza essere messo in pari. Un turno da 12h conta come due turni. Il totale esclude Bambi e gli
+          alti opzionali; la ruota comune non è conteggiata.
         </li>
       </ol>
     </section>

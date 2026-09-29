@@ -24,9 +24,6 @@ import { exportExcel } from '../exportExcel';
 import { GROUP_ENDS, HEADER_DEPTH, headerRows } from '../calendarHeaders';
 
 const HEAD_ROWS = headerRows();
-const NIGHT = COLUMNS.findIndex((c) => c.slot === 'PS_NOTTE');
-/** Colonna del calendario (da 0, dopo "Giorno") di COLUMNS[i]: la ruota comune ne occupa una in più dopo la notte. */
-const bodyCol = (i: number) => i + (i > NIGHT ? 1 : 0);
 const gend = (col: number) => (GROUP_ENDS.has(col) ? ' gend' : '');
 
 export function CalendarView({ data, setData, month }: ViewProps) {
@@ -203,7 +200,10 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                   </th>
                   {COLUMNS.map((col, i) => {
                     const k = keyOf({ date, ...col });
-                    const cell = cells[k];
+                    // Secondo posto di notte: ruota comune (con il nome scritto a mano) o un altro specializzando.
+                    const secondNight = col.slot === 'PS_NOTTE' && col.idx === 1;
+                    // Dati di prima: solo il nome della ruota comune, senza cella.
+                    const cell: Cell | undefined = cells[k] ?? (secondNight && ruotaNames[date] ? { who: RUOTA, source: 'manual' } : undefined);
                     const pos = day.find((p) => p.slot === col.slot && p.idx === col.idx);
                     const mirror = day.find((p) => p.idx === col.idx && p.alsoSlots.includes(col.slot));
                     const ws = warnByKey.get(k) ?? [];
@@ -217,7 +217,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                       pos?.manualOnly && col.slot !== 'BAMBI' ? 'optional' : '',
                       cell?.source === 'manual' ? 'manual' : '',
                       ws.some((w) => w.level === 'error') ? 'err' : ws.length ? 'wrn' : '',
-                    ].join(' ') + gend(bodyCol(i));
+                    ].join(' ') + gend(i);
                     const title = [
                       !pos
                         ? mirror
@@ -228,6 +228,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                             ? 'Bambi: facoltativo, solo chi è interessato'
                             : col.slot.startsWith('PS_OPZ')
                             ? 'Alti opzionale: per chi vuole fare un turno in più. Si compila a mano, non entra nel bilanciamento'
+                            : secondNight
+                            ? 'Secondo posto di notte: ruota comune (scrivi il nome) oppure un altro specializzando, che conta come notte anche nel bilanciamento'
                             : 'Posto facoltativo: si compila a mano con chi è disponibile'
                           : `Regola: ${pos.years.map((y) => YEAR_LABEL[y]).join(' / ')} anno${pos.ruotaFallback ? ', altrimenti ruota comune' : ''}`,
                       ...ws.map((w) => w.message),
@@ -245,7 +247,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                         <td className={cls} title={title}>
                           <select
                             value={cell?.who ?? ''}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              if (secondNight && e.target.value !== RUOTA && ruotaNames[date]) setRuotaName(date, '');
                               setCells((c) => {
                                 // Turno da 12h: la scelta vale per tutte le fasce dello stesso posto.
                                 const main = pos ?? mirror;
@@ -257,8 +260,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                                   else delete c[key];
                                 }
                                 return c;
-                              })
-                            }
+                              });
+                            }}
                           >
                             <option value="">—</option>
                             {!listed && (
@@ -284,24 +287,19 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                               );
                             })}
                           </select>
+                          {secondNight && cell?.who === RUOTA && (
+                            <input
+                              className="ruota-name"
+                              key={`${date}|${ruotaNames[date] ?? ''}`}
+                              list="ruota-names"
+                              defaultValue={ruotaNames[date] ?? ''}
+                              placeholder="nome…"
+                              title="Nome di chi copre la ruota comune"
+                              onBlur={(e) => e.target.value.trim() !== (ruotaNames[date] ?? '') && setRuotaName(date, e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                            />
+                          )}
                         </td>
-                        {col.slot === 'PS_NOTTE' && (
-                          <td
-                            className={`cell ruota-name ${ruotaCanCover(col.slot, date) ? (ruotaNames[date] ? 'ruota' : '') : 'unused'}${gend(NIGHT + 1)}`}
-                            title={ruotaCanCover(col.slot, date) ? 'Ruota comune: scrivi il nome a mano' : 'La ruota comune copre solo le notti dal lunedì al venerdì'}
-                          >
-                            {ruotaCanCover(col.slot, date) && (
-                              <input
-                                key={`${date}|${ruotaNames[date] ?? ''}`}
-                                list="ruota-names"
-                                defaultValue={ruotaNames[date] ?? ''}
-                                placeholder="—"
-                                onBlur={(e) => e.target.value.trim() !== (ruotaNames[date] ?? '') && setRuotaName(date, e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                              />
-                            )}
-                          </td>
-                        )}
                       </Fragment>
                     );
                   })}

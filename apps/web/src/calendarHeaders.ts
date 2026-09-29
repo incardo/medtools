@@ -1,4 +1,4 @@
-/** Intestazioni del calendario su tre livelli: reparto → fascia → posto. Stesso ordine di COLUMNS (+ ruota comune dopo la notte). */
+/** Intestazioni del calendario su tre livelli: reparto → fascia → posto. Stesso ordine di COLUMNS. */
 export type HeadNode = { label: string; children?: HeadNode[] };
 
 export const HEADERS: HeadNode[] = [
@@ -7,7 +7,7 @@ export const HEADERS: HeadNode[] = [
     children: [
       { label: 'Mattina', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Alti (opz.)' }, { label: 'Verdi' }] },
       { label: 'Pomeriggio', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Alti (opz.)' }, { label: 'Verdi' }] },
-      { label: 'Notte', children: [{ label: 'Specializzando' }, { label: 'Ruota comune' }] },
+      { label: 'Notte', children: [{ label: 'Specializzando' }, { label: 'Ruota comune / altro' }] },
     ],
   },
   { label: 'OBI', children: [{ label: 'Mattina', children: [{ label: '' }] }, { label: 'Pomeriggio', children: [{ label: '' }] }] },

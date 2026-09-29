@@ -20,6 +20,15 @@ function heat(v: number, mean: number, maxDev: number): string | undefined {
   return d < 0 ? `rgba(46, 144, 250, ${a.toFixed(2)})` : `rgba(247, 144, 9, ${a.toFixed(2)})`;
 }
 
+/** Assenze: stesso colore della scheda Disponibilità (ferie blu, indisponibile rosso, parziali giallo), più intenso quanti più giorni. */
+const ABSENCE_RGB: Partial<Record<SummaryCol, string>> = { ferie: '31, 111, 235', indisp: '215, 38, 61', parziali: '232, 163, 23' };
+
+function absenceBg(col: SummaryCol, v: number, max: number): string | undefined {
+  const rgb = ABSENCE_RGB[col];
+  if (!rgb || !v) return undefined;
+  return `rgba(${rgb}, ${(0.12 + (0.48 * v) / Math.max(max, 1)).toFixed(2)})`;
+}
+
 export function OverviewView({ data, month }: ViewProps) {
   const [mode, setMode] = useState<Mode>('mese');
   const ay = academicYearFor(data, month);
@@ -59,7 +68,15 @@ export function OverviewView({ data, month }: ViewProps) {
       });
   }, [data.people, days, roster, expected, sums]);
 
-  const cls = (col: number, extra = '') => `num${ENDS.has(col) ? ' gend' : ''}${extra}`;
+  // Valore massimo di ogni colonna delle assenze, tra tutte le persone mostrate: dà la scala dei colori.
+  const absMax = useMemo(() => {
+    const ids = groups.flatMap((g) => g.people.map((p) => p.id));
+    return Object.fromEntries(
+      Object.keys(ABSENCE_RGB).map((col) => [col, Math.max(0, ...ids.map((id) => summaryValue(sums[id], col)))]),
+    ) as Record<string, number>;
+  }, [groups, sums]);
+
+  const cls = (col: number, extra = '') =>`num${ENDS.has(col) ? ' gend' : ''}${extra}`;
 
   return (
     <section>
@@ -141,7 +158,7 @@ export function OverviewView({ data, month }: ViewProps) {
                             ·
                           </td>
                         );
-                      const bg = s && pertinent(p, col) ? heat(v, s.mean, s.maxDev) : undefined;
+                      const bg = s && pertinent(p, col) ? heat(v, s.mean, s.maxDev) : absenceBg(col, v, absMax[col] ?? 0);
                       return (
                         <td
                           key={col}

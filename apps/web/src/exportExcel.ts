@@ -78,10 +78,8 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
     headerFooter: { oddFooter: `&L&8Turni specializzandi · ${label}&R&8Pagina &P di &N` },
   });
 
-  // Colonne: giorno + slot del calendario, con la ruota comune subito dopo la notte.
-  type Col = { kind: 'slot'; slot: (typeof COLUMNS)[number] } | { kind: 'ruota' };
-  const cols: Col[] = COLUMNS.flatMap((c): Col[] => (c.slot === 'PS_NOTTE' ? [{ kind: 'slot', slot: c }, { kind: 'ruota' }] : [{ kind: 'slot', slot: c }]));
-  const width = cols.length + 1;
+  // Colonne: giorno + slot del calendario (il secondo posto di notte è la ruota comune o un altro specializzando).
+  const width = COLUMNS.length + 1;
   title(ws, `Turni specializzandi · ${Label}`, `Pronto Soccorso, OBI, Pediatria d'Urgenza · aggiornato al ${today}`, width);
 
   ws.getColumn(1).width = 9;
@@ -116,27 +114,22 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
     d.alignment = { vertical: 'middle' };
     d.border = box;
 
-    cols.forEach((c, j) => {
+    COLUMNS.forEach(({ slot, idx }, j) => {
       const x = r.getCell(j + 2);
       let text = '';
       let bg: string = weekend ? COLOR.weekend : 'FFFFFFFF';
-      if (c.kind === 'ruota') {
-        text = ruotaNames[date] ?? '';
-        if (text) bg = COLOR.ruota;
-      } else {
-        const { slot, idx } = c.slot;
-        const foreseen = day.some((p) => (p.slot === slot || p.alsoSlots.includes(slot)) && p.idx === idx);
-        const who = cells[keyOf({ date, slot, idx })]?.who;
-        if (who === RUOTA) {
-          text = 'Ruota comune';
-          bg = COLOR.ruota;
-        } else if (who) {
-          text = names.get(who) ?? '?';
-          const y = roster.yearOf(who, date);
-          if (y) bg = COLOR[y];
-        } else if (!foreseen) {
-          bg = COLOR.unused;
-        }
+      const secondNight = slot === 'PS_NOTTE' && idx === 1;
+      const foreseen = day.some((p) => (p.slot === slot || p.alsoSlots.includes(slot)) && p.idx === idx);
+      const who = cells[keyOf({ date, slot, idx })]?.who ?? (secondNight && ruotaNames[date] ? RUOTA : undefined);
+      if (who === RUOTA) {
+        text = (secondNight && ruotaNames[date]) || 'Ruota comune';
+        bg = COLOR.ruota;
+      } else if (who) {
+        text = names.get(who) ?? '?';
+        const y = roster.yearOf(who, date);
+        if (y) bg = COLOR[y];
+      } else if (!foreseen) {
+        bg = COLOR.unused;
       }
       x.value = text;
       x.fill = fill(bg);

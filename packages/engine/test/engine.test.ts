@@ -4,6 +4,7 @@ import {
   academicYearOf,
   addDays,
   buildDemand,
+  countAssignments,
   countExtras,
   daysOfMonth,
   isWeekend,
@@ -61,9 +62,9 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect(ps('2026-11-06', 'P')).toEqual([[4], [3], [5]]);
   });
 
-  it('ogni posto PS feriale ha un anno (tranne gli alti opzionali, a mano)', () => {
+  it('ogni posto PS feriale ha un anno (tranne alti opzionali e secondo posto di notte, a mano)', () => {
     for (const date of daysOfMonth('2026-11')) {
-      expect(buildDemand(date, ctx).filter((p) => p.manualOnly && p.slot !== 'BAMBI' && !p.slot.startsWith('PS_OPZ'))).toEqual([]);
+      expect(buildDemand(date, ctx).filter((p) => p.manualOnly && p.slot !== 'BAMBI' && !p.slot.startsWith('PS_OPZ') && !(p.slot === 'PS_NOTTE' && p.idx === 1))).toEqual([]);
     }
   });
 
@@ -368,6 +369,24 @@ describe('motore', () => {
     // Nel weekend la colonna non esiste: avviso.
     const ws = validate(input, [{ date: '2026-11-07', slot: 'PS_OPZ_M', idx: 0, who: 'kilo', source: 'manual' }]);
     expect(ws.some((w) => w.message === 'Posto non previsto in questo giorno')).toBe(true);
+  });
+
+  it('notte, secondo posto (lun–ven): a mano, ruota comune o uno specializzando che conta nel bilanciamento', () => {
+    const second = (d: string) => buildDemand(d, { vPresent: true }).find((p) => p.slot === 'PS_NOTTE' && p.idx === 1);
+    expect(second('2026-11-02')).toMatchObject({ manualOnly: true, ruotaFallback: true, years: [5, 4, 3] }); // lun
+    expect(second('2026-11-07')).toBeUndefined(); // sab
+    expect(res.assignments.some((a) => a.slot === 'PS_NOTTE' && a.idx === 1)).toBe(false);
+    // Uno specializzando inserito a mano: smonto il giorno dopo e la notte conta nello storico.
+    const extra: Assignment = { date: '2026-11-03', slot: 'PS_NOTTE', idx: 1, who: 'kilo', source: 'manual' };
+    const r = suggestMonth(exampleInput({ locked: [extra] }));
+    expect(r.assignments.some((a) => a.who === 'kilo' && (a.date === '2026-11-03' || a.date === '2026-11-04'))).toBe(false);
+    expect(countAssignments([extra]).kilo.PS_NOTTE).toBe(1);
+    // Stessa persona nei due posti della stessa notte: errore.
+    const ws = validate(input, [
+      { date: '2026-11-03', slot: 'PS_NOTTE', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-11-03', slot: 'PS_NOTTE', idx: 1, who: 'alfa', source: 'manual' },
+    ]);
+    expect(ws.some((w) => w.message === 'Più turni nello stesso giorno')).toBe(true);
   });
 
   it('segnala assenze e doppi turni nelle modifiche manuali', () => {

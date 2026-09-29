@@ -340,7 +340,7 @@ th.day {
   padding: 3px 2px;
   font-size: 13px;
 }
-.cal td.ruota-name input {
+.cal td.cell input.ruota-name {
   border: none;
   background: transparent;
   width: 118px;
