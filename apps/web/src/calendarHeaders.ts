@@ -13,7 +13,7 @@ export const HEADERS: HeadNode[] = [
   { label: 'OBI', children: [{ label: 'Mattina', children: [{ label: '' }] }, { label: 'Pomeriggio', children: [{ label: '' }] }] },
   {
     label: 'Ped Urg',
-    children: [{ label: 'Mattina', children: [{ label: 'IV' }, { label: 'III' }] }, { label: 'Pomeriggio', children: [{ label: '' }] }],
+    children: [{ label: 'Mattina', children: [{ label: 'IV' }, { label: 'III' }] }, { label: 'Pomeriggio', children: [{ label: 'IV' }] }],
   },
   { label: 'Bambi' },
   { label: 'Amb' },
