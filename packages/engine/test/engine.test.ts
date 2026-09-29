@@ -30,7 +30,13 @@ describe('date e anno di specializzazione', () => {
 });
 
 describe('regole per anno (domanda giornaliera)', () => {
-  const ctx = { vPresent: true, vNightsPerPerson: 5 };
+  const ctx = { vPresent: true };
+
+  it('V anno: 5 notti a settimana (dom, lun, mar, mer, ven); IV anno giovedì e sabato', () => {
+    const week = Array.from({ length: 7 }, (_, i) => addDays('2026-11-02', i)); // lun → dom
+    const years = week.map((d) => buildDemand(d, ctx).find((p) => p.slot === 'PS_NOTTE')!.years);
+    expect(years).toEqual([[5], [5], [5], [4], [5], [4], [5]]);
+  });
 
   it('IV anno: notte giovedì e sabato, OBI mattina il lunedì', () => {
     expect(buildDemand('2026-11-05', ctx).find((p) => p.slot === 'PS_NOTTE')!.years).toEqual([4]); // gio
@@ -121,7 +127,7 @@ describe('regole per anno (domanda giornaliera)', () => {
   });
 
   it('senza V anno i suoi turni passano a IV e III, ma il III non fa OBI', () => {
-    const d = buildDemand('2027-10-29', { vPresent: false, vNightsPerPerson: 5 }); // ven
+    const d = buildDemand('2027-10-29', { vPresent: false }); // ven
     expect(d.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!.years).toEqual([4, 3]);
     expect(d.find((p) => p.slot === 'PS_VERDI_P')!.years).toEqual([4, 3]);
     expect(d.find((p) => p.slot === 'OBI_P')!.years).toEqual([4]);
@@ -242,11 +248,10 @@ describe('motore', () => {
     }
   });
 
-  it('massimo 5 notti al mese per il V anno, distribuite in modo bilanciato', () => {
+  it('le notti del V anno sono distribuite in modo bilanciato tra le persone del V anno', () => {
     const nights: Record<string, number> = {};
     for (const a of res.assignments) if (a.slot === 'PS_NOTTE' && yearOf(a.who) === 5) nights[a.who] = (nights[a.who] ?? 0) + 1;
     const values = Object.values(nights);
-    expect(Math.max(...values)).toBeLessThanOrEqual(5);
     expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
   });
 

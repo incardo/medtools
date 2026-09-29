@@ -41,18 +41,6 @@ export function ParamsView({ data, setData, month }: ViewProps) {
       </div>
 
       <h3>{monthLabel(month)}</h3>
-      <div className="form">
-        <label>
-          Notti del V anno per persona
-          <input
-            type="number"
-            min={0}
-            max={15}
-            value={params.vNightsPerPerson}
-            onChange={(e) => setParams({ vNightsPerPerson: Number(e.target.value) })}
-          />
-        </label>
-      </div>
 
       <h4>Esami e assenze collettive</h4>
       {params.exams.length === 0 && <p className="muted">Nessuno.</p>}

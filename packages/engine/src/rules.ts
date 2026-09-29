@@ -50,7 +50,6 @@ export function ruotaCanCover(slot: SlotCode, date: string): boolean {
 interface DemandContext {
   /** Il V anno c'è quel giorno (non oltre l'ultimo giorno dell'anno). */
   vPresent: boolean;
-  vNightsPerPerson: number;
 }
 
 type Draft = Omit<Position, 'date' | 'alsoSlots' | 'ruotaFallback' | 'manualOnly' | 'label'> & Partial<Position>;
@@ -89,7 +88,7 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
     drafts.push(
       wd === 6
         ? { slot: 'PS_NOTTE', idx: 0, years: [4] }
-        : { slot: 'PS_NOTTE', idx: 0, years: V, monthlyCap: ctx.vPresent ? ctx.vNightsPerPerson : undefined },
+        : { slot: 'PS_NOTTE', idx: 0, years: V },
     );
     // OBI 12h: una sola persona per mattina e pomeriggio
     drafts.push({ slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'] });
@@ -106,7 +105,7 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
     drafts.push(
       wd === 4
         ? { slot: 'PS_NOTTE', idx: 0, years: [4] }
-        : { slot: 'PS_NOTTE', idx: 0, years: V, monthlyCap: ctx.vPresent ? ctx.vNightsPerPerson : undefined },
+        : { slot: 'PS_NOTTE', idx: 0, years: V },
     );
     drafts.push({ slot: 'OBI_M', idx: 0, years: wd === 1 ? [4] : V });
     drafts.push({ slot: 'OBI_P', idx: 0, years: V });

@@ -71,7 +71,7 @@ export function browserData(): AppData | null {
 }
 
 export function paramsFor(data: AppData, month: string): MonthParams {
-  return data.monthParams[month] ?? { month, exams: [], vNightsPerPerson: 5 };
+  return data.monthParams[month] ?? { month, exams: [] };
 }
 
 export function academicYearFor(data: AppData, month: string): AcademicYear {

@@ -16,7 +16,7 @@ import {
   type SlotCode,
   type Year,
 } from '@medtools/engine';
-import { YEAR_LABEL, academicYearFor, paramsFor } from '../store';
+import { YEAR_LABEL, academicYearFor } from '../store';
 import { dayLabel, shortDate, type ViewProps } from '../format';
 import { HEADERS, type HeadNode } from '../calendarHeaders';
 
@@ -42,7 +42,6 @@ function notes(pos: Position): string[] {
   else if (pos.prevDaySlot?.startsWith('PEDU')) out.push('blocco');
   else if (pos.prevDaySlot) out.push('scambio col sabato');
   if (pos.notPrevDay) out.push('≠ sabato');
-  if (pos.monthlyCap !== undefined) out.push(`max ${pos.monthlyCap}/mese a testa`);
   if (pos.ruotaFallback) out.push('o ruota comune');
   if (pos.manualOnly) out.push('facoltativo, a mano');
   return out;
@@ -51,10 +50,9 @@ function notes(pos: Position): string[] {
 export function RulesView({ data, month }: ViewProps) {
   const [vPresent, setVPresent] = useState(true);
   const ay = academicYearFor(data, month);
-  const params = paramsFor(data, month);
   const week = useMemo(
-    () => WEEK.map((date) => buildDemand(date, { vPresent, vNightsPerPerson: params.vNightsPerPerson })),
-    [vPresent, params.vNightsPerPerson],
+    () => WEEK.map((date) => buildDemand(date, { vPresent })),
+    [vPresent],
   );
 
   return (
@@ -148,8 +146,8 @@ export function RulesView({ data, month }: ViewProps) {
           <b>V anno agli alti nel weekend</b>: la domenica sempre una persona diversa dal sabato.
         </li>
         <li>
-          <b>Notti del V anno</b>: bilanciate tra le persone del V anno, al massimo {params.vNightsPerPerson} al mese a testa (parametro del
-          mese). Se nessuno è disponibile, lun–ven va la <b>ruota comune</b>.
+          <b>Notti in PS</b>: il V anno copre <b>5 notti a settimana</b> (domenica, lunedì, martedì, mercoledì, venerdì), bilanciate tra le
+          persone del V anno; il IV anno il giovedì e il sabato. Se nessuno è disponibile, lun–ven va la <b>ruota comune</b>.
         </li>
         <li>
           <b>Bambi</b> è facoltativo: si assegna a mano, solo a chi è interessato, e non entra nel bilanciamento.

@@ -22,7 +22,7 @@ export function exampleInput(overrides: Partial<EngineInput> = {}): EngineInput 
     enrollments,
     academicYear: { id: '2026/27', start: '2026-11-01', end: '2027-10-31', vLastDay: '2027-10-27' },
     absences: [],
-    params: { month: '2026-11', exams: [], vNightsPerPerson: 5 },
+    params: { month: '2026-11', exams: [] },
     locked: [],
     history: {},
     runs: 10,

@@ -85,8 +85,6 @@ export interface ExamDay {
 export interface MonthParams {
   month: string; // YYYY-MM
   exams: ExamDay[];
-  /** Notti del V anno nel mese, per persona. */
-  vNightsPerPerson: number;
 }
 
 export interface Assignment {
@@ -114,8 +112,6 @@ export interface Position {
   years: Year[];
   /** Se nessuno è disponibile, si scrive "Ruota comune" (solo notti lun–ven). */
   ruotaFallback: boolean;
-  /** Tetto mensile per persona (notti V anno). */
-  monthlyCap?: number;
   /** Il motore non lo compila (Bambi): solo manuale, non conta come scoperto. */
   manualOnly: boolean;
   label: string;

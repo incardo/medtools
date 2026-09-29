@@ -14,7 +14,7 @@ export function makeRoster(input: EngineInput): Roster {
 
 export function demandForMonth(input: EngineInput, roster = makeRoster(input)): Position[][] {
   return daysOfMonth(input.month).map((date) =>
-    buildDemand(date, { vPresent: roster.vPresent(date), vNightsPerPerson: input.params.vNightsPerPerson }),
+    buildDemand(date, { vPresent: roster.vPresent(date) }),
   );
 }
 
@@ -144,7 +144,6 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const countOf = (p: string) =>
     (counts[p] ??= { PS_ALTI: 0, PS_VERDI: 0, PS_NOTTE: 0, OBI: 0, PEDU: 0, AMB: 0, BAMBI: 0, ...input.history[p] });
   const totalOf = (p: string) => BALANCED.reduce((s, f) => s + countOf(p)[f], 0);
-  const monthNights: Record<string, number> = {};
   const extra = input.extraHistory ?? {};
   const weekendDays = new Map<string, Set<string>>();
   const weekendOf = (p: string) => (extra[p]?.weekend ?? 0) + (weekendDays.get(p)?.size ?? 0);
@@ -152,7 +151,6 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const blocksOf = (p: string) => (extra[p]?.blocks ?? 0) + (monthBlocks[p] ?? 0);
   const bump = (p: string, slot: SlotCode, date: string) => {
     countOf(p)[SLOT_INFO[slot].family]++;
-    if (slot === 'PS_NOTTE') monthNights[p] = (monthNights[p] ?? 0) + 1;
     if (isWeekend(date)) weekendDays.set(p, (weekendDays.get(p) ?? new Set()).add(date));
     if (isBlockStart({ date, slot })) monthBlocks[p] = (monthBlocks[p] ?? 0) + 1;
   };
@@ -167,7 +165,6 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     if (board.slots(p, addDays(pos.date, -1)).includes('PS_NOTTE')) return false;
     if (pos.slot === 'PS_NOTTE' && board.slots(p, addDays(pos.date, 1)).length) return false;
     if (pos.notPrevDay && board.slots(p, addDays(pos.date, -1)).includes(pos.slot)) return false;
-    if (pos.monthlyCap !== undefined && (monthNights[p] ?? 0) >= pos.monthlyCap) return false;
     return true;
   };
 
