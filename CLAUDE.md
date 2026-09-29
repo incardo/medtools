@@ -191,6 +191,11 @@ Aggiunti il 29/09/2026: **`no N`** = non disponibile la notte; **`solo M`**, **`
 
 Un valore per persona e giorno (`AbsenceKind`); le fasce escluse da ogni tipo sono in `ABSENCE_BLOCKS` (`packages/engine/src/types.ts`). Nella scheda Disponibilità si sceglie da un menu che si apre cliccando la cella.
 
+Scheda Disponibilità (29/09/2026) **[detto]**:
+
+- **Pennello** per inserire più giorni insieme: si sceglie un tipo (o "cancella") e si trascina sulla riga di una persona; il trascinamento resta sulla riga dove è iniziato. Con "Menu" il clic apre il menu come prima.
+- **Riga "assenti" per ogni anno di corso**: per ogni giorno, quante persone di quell'anno sono assenti tutto il giorno (ferie, indisponibili, esami), più "+N" per chi è assente solo in parte. Colore: **giallo** = nessun margine, **rosso** = non bastano. Il confronto è con una stima delle persone che servono: i posti che le regole danno a quell'anno quel giorno (un 12h = una persona), più chi smonta dalla notte del giorno prima. Il dettaglio con i nomi è nel tooltip della cella.
+
 I dati di assenza del vecchio file Excel **non si considerano**. **[detto]**
 
 ---

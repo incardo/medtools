@@ -1,5 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ABSENCE_INFO, daysOfMonth, isWeekend, makeRoster, type AbsenceKind, type Year } from '@medtools/engine';
+import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import {
+  ABSENCE_INFO,
+  addDays,
+  buildDemand,
+  daysOfMonth,
+  demandForMonth,
+  isWeekend,
+  makeRoster,
+  type AbsenceKind,
+  type Fascia,
+  type Position,
+  type Year,
+} from '@medtools/engine';
 import { YEAR_LABEL, engineInput } from '../store';
 import { dayLabel, monthLabel, type ViewProps } from '../format';
 
@@ -11,13 +23,24 @@ const MENU: AbsenceKind[][] = [
 ];
 const MENU_W = 170;
 const MENU_H = 330;
+const FASCE: Fascia[] = ['M', 'P', 'N'];
 
 type Open = { personId: string; date: string; x: number; y: number };
+/** Pennello: null = clic apre il menu; '' = cancella; altrimenti il tipo da scrivere. */
+type Brush = AbsenceKind | '' | null;
+
+/** Persone che servono a un anno di corso in un giorno: i suoi posti (12h = una persona) più chi smonta dalla notte prima. */
+function needed(year: Year, today: Position[], yesterday: Position[]): number {
+  const own = (p: Position) => !p.manualOnly && p.years.length === 1 && p.years[0] === year;
+  const night = yesterday.some((p) => own(p) && p.slot === 'PS_NOTTE') ? 1 : 0;
+  return today.filter(own).length + night;
+}
 
 export function AvailabilityView({ data, setData, month }: ViewProps) {
   const days = daysOfMonth(month);
   const input = useMemo(() => engineInput(data, month), [data, month]);
   const roster = useMemo(() => makeRoster(input), [input]);
+  const demand = useMemo(() => demandForMonth(input, roster), [input, roster]);
 
   // Chi è attivo in almeno un giorno del mese, con l'anno di corso del primo giorno attivo.
   const rows = useMemo(() => {
@@ -29,7 +52,34 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
     return out.sort((a, b) => b.year - a.year || a.name.localeCompare(b.name));
   }, [data.people, days, roster]);
 
+  /** Per anno di corso e giorno: chi è assente tutto il giorno, chi solo in parte, quante persone servono e quante ci sono. */
+  const totals = useMemo(() => {
+    const before = addDays(days[0], -1);
+    const prevDay = buildDemand(before, { vPresent: roster.vPresent(before) });
+    const out = new Map<Year, { away: string[]; partial: string[]; need: number; active: number }[]>();
+    for (const year of [5, 4, 3] as Year[]) {
+      out.set(
+        year,
+        days.map((d, i) => {
+          const active = roster.activeOn(d).filter((x) => x.year === year);
+          const away: string[] = [];
+          const partial: string[] = [];
+          for (const { person } of active) {
+            const off = FASCE.filter((f) => roster.unavailable(person.id, d, f));
+            if (off.length === 3) away.push(person.name);
+            else if (off.length) partial.push(person.name);
+          }
+          return { away, partial, need: needed(year, demand[i], i ? demand[i - 1] : prevDay), active: active.length };
+        }),
+      );
+    }
+    return out;
+  }, [days, demand, roster]);
+
   const [open, setOpen] = useState<Open | null>(null);
+  const [brush, setBrush] = useState<Brush>(null);
+  // Trascinamento del pennello: solo sulla riga dove è iniziato.
+  const painting = useRef<{ personId: string; done: Set<string> } | null>(null);
 
   // Il menu si chiude con Esc, scorrendo o cliccando fuori.
   useEffect(() => {
@@ -46,6 +96,39 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
     };
   }, [open]);
 
+  useEffect(() => {
+    const stop = () => (painting.current = null);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    return () => {
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+    };
+  }, []);
+
+  const write = (personId: string, date: string, kind: AbsenceKind | '') =>
+    setData((d) => {
+      const k = `${personId}|${date}`;
+      if ((d.absences[k] ?? '') === kind) return d;
+      const absences = { ...d.absences };
+      if (kind) absences[k] = kind;
+      else delete absences[k];
+      return { ...d, absences };
+    });
+
+  const paint = (personId: string, date: string) => {
+    const p = painting.current;
+    if (brush === null || !p || p.personId !== personId || p.done.has(date) || !roster.yearOf(personId, date)) return;
+    p.done.add(date);
+    write(personId, date, brush);
+  };
+
+  const onPointerMove = (e: PointerEvent) => {
+    if (!painting.current) return;
+    const td = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('td[data-person]');
+    if (td) paint(td.dataset.person!, td.dataset.date!);
+  };
+
   const openMenu = (personId: string, date: string, el: HTMLElement) => {
     const r = el.getBoundingClientRect();
     setOpen({
@@ -58,16 +141,41 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
 
   const choose = (kind: AbsenceKind | '') => {
     if (!open) return;
-    const k = `${open.personId}|${open.date}`;
-    setData((d) => {
-      const absences = { ...d.absences };
-      if (kind) absences[k] = kind;
-      else delete absences[k];
-      return { ...d, absences };
-    });
+    write(open.personId, open.date, kind);
     setOpen(null);
   };
   const current = open ? data.absences[`${open.personId}|${open.date}`] : undefined;
+
+  const summaryRow = (year: Year) => {
+    const cells = totals.get(year)!;
+    return (
+      <tr className="avail-total">
+        <th className="sticky name">
+          <span className={`chip y${year}`}>{YEAR_LABEL[year]}</span> assenti
+        </th>
+        {cells.map((c, i) => {
+          const free = c.active - c.away.length;
+          const level = !c.active ? '' : free < c.need ? ' short' : free === c.need ? ' tight' : '';
+          const title = [
+            `${YEAR_LABEL[year]} anno, ${dayLabel(days[i]).dow} ${dayLabel(days[i]).day}`,
+            `Assenti tutto il giorno: ${c.away.length ? c.away.join(', ') : 'nessuno'}`,
+            c.partial.length ? `Solo in parte: ${c.partial.join(', ')}` : '',
+            `Presenti ${free} su ${c.active}; servono circa ${c.need} persone (posti del giorno + smonto dalla notte prima)`,
+            level === ' short' ? 'Non bastano per coprire tutti i posti' : level === ' tight' ? 'Nessun margine' : '',
+          ]
+            .filter(Boolean)
+            .join('\n');
+          return (
+            <td key={days[i]} className={`num${level}${isWeekend(days[i]) ? ' weekend' : ''}`} title={title}>
+              {c.away.length || ''}
+              {c.partial.length ? <sup>+{c.partial.length}</sup> : null}
+            </td>
+          );
+        })}
+        <td className="num">{cells.reduce((s, c) => s + c.away.length, 0) || ''}</td>
+      </tr>
+    );
+  };
 
   return (
     <section>
@@ -79,8 +187,27 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
         fascia), <b>solo M</b> / <b>solo P</b> / <b>solo N</b> (disponibile solo in quella fascia). Ogni specializzando compila le
         proprie.
       </p>
+      <div className="brush-bar" role="group" aria-label="Pennello">
+        <span className="muted">Più giorni insieme: scegli un pennello e trascina sulla riga</span>
+        <button className={brush === null ? 'active' : ''} onClick={() => setBrush(null)} title="Il clic su una cella apre il menu">
+          Menu
+        </button>
+        {MENU.flat().map((k) => (
+          <button key={k} className={brush === k ? 'active' : ''} onClick={() => setBrush(k)} title={ABSENCE_INFO[k].label}>
+            <span className={`abs-tag ${k}`}>{ABSENCE_INFO[k].short}</span>
+          </button>
+        ))}
+        <button className={brush === '' ? 'active' : ''} onClick={() => setBrush('')} title="Cancella i giorni su cui passi">
+          <span className="abs-tag">—</span> cancella
+        </button>
+      </div>
+      <div className="legend">
+        <span className="muted">Righe "assenti": persone assenti tutto il giorno (ferie, indisponibili, esami); +N = assenti solo in parte.</span>
+        <span className="chip avail-tight">nessun margine</span>
+        <span className="chip avail-short">non bastano per i posti del giorno</span>
+      </div>
       <div className="table-wrap">
-        <table className="avail">
+        <table className={`avail${brush !== null ? ' brushing' : ''}`} onPointerMove={onPointerMove}>
           <thead>
             <tr>
               <th className="sticky">Persona</th>
@@ -99,28 +226,39 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.id} className={i > 0 && rows[i - 1].year !== r.year ? 'sep' : ''}>
-                <th className="sticky name">
-                  <span className={`chip y${r.year}`}>{YEAR_LABEL[r.year]}</span> {r.name}
-                </th>
-                {days.map((d) => {
-                  const kind = data.absences[`${r.id}|${d}`];
-                  const inactive = !roster.yearOf(r.id, d);
-                  return (
-                    <td
-                      key={d}
-                      className={`abs ${kind ?? ''} ${isWeekend(d) ? 'weekend' : ''} ${inactive ? 'inactive' : ''} ${
-                        open?.personId === r.id && open.date === d ? 'open' : ''
-                      }`}
-                      title={kind ? ABSENCE_INFO[kind].label : undefined}
-                      onClick={(e) => !inactive && openMenu(r.id, d, e.currentTarget)}
-                    >
-                      {kind ? ABSENCE_INFO[kind].short : ''}
-                    </td>
-                  );
-                })}
-                <td className="num">{days.filter((d) => data.absences[`${r.id}|${d}`]).length}</td>
-              </tr>
+              <Fragment key={r.id}>
+                <tr className={i > 0 && rows[i - 1].year !== r.year ? 'sep' : ''}>
+                  <th className="sticky name">
+                    <span className={`chip y${r.year}`}>{YEAR_LABEL[r.year]}</span> {r.name}
+                  </th>
+                  {days.map((d) => {
+                    const kind = data.absences[`${r.id}|${d}`];
+                    const inactive = !roster.yearOf(r.id, d);
+                    return (
+                      <td
+                        key={d}
+                        data-person={r.id}
+                        data-date={d}
+                        className={`abs ${kind ?? ''} ${isWeekend(d) ? 'weekend' : ''} ${inactive ? 'inactive' : ''} ${
+                          open?.personId === r.id && open.date === d ? 'open' : ''
+                        }`}
+                        title={kind ? ABSENCE_INFO[kind].label : undefined}
+                        onPointerDown={(e) => {
+                          if (inactive || brush === null) return;
+                          e.preventDefault();
+                          painting.current = { personId: r.id, done: new Set() };
+                          paint(r.id, d);
+                        }}
+                        onClick={(e) => !inactive && brush === null && openMenu(r.id, d, e.currentTarget)}
+                      >
+                        {kind ? ABSENCE_INFO[kind].short : ''}
+                      </td>
+                    );
+                  })}
+                  <td className="num">{days.filter((d) => data.absences[`${r.id}|${d}`]).length}</td>
+                </tr>
+                {(i === rows.length - 1 || rows[i + 1].year !== r.year) && summaryRow(r.year)}
+              </Fragment>
             ))}
           </tbody>
         </table>
