@@ -1,7 +1,7 @@
-import { addDays, daysOfMonth, weekday } from './dates';
+import { addDays, daysOfMonth, isWeekend, weekday } from './dates';
 import { Roster } from './roster';
 import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rules';
-import type { Assignment, EngineInput, EngineResult, Family, History, Position, SlotCode, Warning } from './types';
+import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
 import { RUOTA } from './types';
 
 const BALANCED: Family[] = ['PS_ALTI', 'PS_VERDI', 'PS_NOTTE', 'OBI', 'PEDU', 'AMB'];
@@ -76,6 +76,55 @@ export function countAssignments(assignments: Assignment[]): History {
   return h;
 }
 
+/** Un blocco Ped Urg inizia con Ped Urg pomeriggio di venerdì. */
+const isBlockStart = (a: { date: string; slot: SlotCode }) => a.slot === 'PEDU_P' && weekday(a.date) === 5;
+
+/** Giorni di sabato/domenica lavorati e blocchi Ped Urg iniziati, per persona (la ruota comune non conta). */
+export function countExtras(assignments: Assignment[]): ExtraHistory {
+  const days = new Map<string, Set<string>>();
+  const out: ExtraHistory = {};
+  for (const a of assignments) {
+    if (!a.who || a.who === RUOTA) continue;
+    const row = (out[a.who] ??= { weekend: 0, blocks: 0 });
+    if (isBlockStart(a)) row.blocks++;
+    if (isWeekend(a.date)) days.set(a.who, (days.get(a.who) ?? new Set()).add(a.date));
+  }
+  for (const [p, d] of days) out[p].weekend = d.size;
+  return out;
+}
+
+/** Pesi del punteggio: più alto = meno adatto. Descritti anche nella scheda Regole. */
+export const WEIGHTS = {
+  /** per ogni turno dello stesso tipo già fatto */
+  family: 3,
+  /** per ogni turno fatto in totale */
+  total: 1,
+  /** per ogni giorno di weekend già lavorato (solo per i posti di sabato e domenica) */
+  weekend: 4,
+  /** se il posto viola lo smonto dopo il weekend */
+  weekendRest: 8,
+  /** per ogni giorno del blocco Ped Urg in cui la persona non è disponibile */
+  blockMissing: 10,
+  /** per ogni blocco Ped Urg già fatto (nella scelta di chi fa il blocco) */
+  blocks: 50,
+} as const;
+
+/** Costo di un calendario completo: tra tutti i tentativi vince quello con il costo più basso. */
+export const COST = {
+  /** per ogni posto scoperto */
+  hole: 1000,
+  /** per ogni smonto dopo il weekend non rispettato */
+  weekendRest: 15,
+  /** per ogni blocco (Ped Urg, scambio del III anno) spezzato */
+  brokenLink: 20,
+  /** squilibrio dentro ogni anno di corso (varianza): turni totali */
+  spreadTotal: 2,
+  /** squilibrio: giorni di weekend lavorati */
+  spreadWeekend: 2,
+  /** squilibrio: ogni tipo di turno */
+  spreadFamily: 1,
+} as const;
+
 function variance(xs: number[]): number {
   if (xs.length < 2) return 0;
   const mean = xs.reduce((s, x) => s + x, 0) / xs.length;
@@ -96,14 +145,18 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     (counts[p] ??= { PS_ALTI: 0, PS_VERDI: 0, PS_NOTTE: 0, OBI: 0, PEDU: 0, AMB: 0, BAMBI: 0, ...input.history[p] });
   const totalOf = (p: string) => BALANCED.reduce((s, f) => s + countOf(p)[f], 0);
   const monthNights: Record<string, number> = {};
-  const bump = (p: string, slot: SlotCode) => {
+  const extra = input.extraHistory ?? {};
+  const weekendDays = new Map<string, Set<string>>();
+  const weekendOf = (p: string) => (extra[p]?.weekend ?? 0) + (weekendDays.get(p)?.size ?? 0);
+  const monthBlocks: Record<string, number> = {};
+  const blocksOf = (p: string) => (extra[p]?.blocks ?? 0) + (monthBlocks[p] ?? 0);
+  const bump = (p: string, slot: SlotCode, date: string) => {
     countOf(p)[SLOT_INFO[slot].family]++;
     if (slot === 'PS_NOTTE') monthNights[p] = (monthNights[p] ?? 0) + 1;
+    if (isWeekend(date)) weekendDays.set(p, (weekendDays.get(p) ?? new Set()).add(date));
+    if (isBlockStart({ date, slot })) monthBlocks[p] = (monthBlocks[p] ?? 0) + 1;
   };
-  for (const a of input.locked) if (a.who && a.who !== RUOTA) bump(a.who, a.slot);
-
-  const out: Assignment[] = [];
-  const holes: Position[] = [];
+  for (const a of input.locked) if (a.who && a.who !== RUOTA) bump(a.who, a.slot, a.date);
 
   const canTake = (p: string, pos: Position): boolean => {
     const year = roster.yearOf(p, pos.date);
@@ -118,20 +171,57 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     return true;
   };
 
+  const blockMissing = (p: string, pos: Position) =>
+    (pos.blockAhead ?? []).filter((slots, i) => roster.unavailableForSlots(p, addDays(pos.date, i + 1), slots)).length;
+
   const score = (p: string, pos: Position): number => {
-    let s = countOf(p)[SLOT_INFO[pos.slot].family] * 3 + totalOf(p);
-    if (board.weekendRestDue(p, pos.date)) s += 8;
+    let s = countOf(p)[SLOT_INFO[pos.slot].family] * WEIGHTS.family + totalOf(p) * WEIGHTS.total;
+    if (isWeekend(pos.date)) s += weekendOf(p) * WEIGHTS.weekend;
+    if (board.weekendRestDue(p, pos.date)) s += WEIGHTS.weekendRest;
     // Blocco Ped Urg: meglio chi è disponibile anche nei giorni successivi del blocco.
-    pos.blockAhead?.forEach((slots, i) => {
-      if (roster.unavailableForSlots(p, addDays(pos.date, i + 1), slots)) s += 10;
-    });
+    s += blockMissing(p, pos) * WEIGHTS.blockMissing;
     return s + rng() * 1.5;
   };
 
+  const out: Assignment[] = [];
+  const holes: Position[] = [];
+  const assign = (who: string, pos: Position) => {
+    for (const slot of [pos.slot, ...pos.alsoSlots]) {
+      const a: Assignment = { date: pos.date, slot, idx: pos.idx, who, source: 'suggested' };
+      out.push(a);
+      board.add(a);
+      bump(who, slot, pos.date);
+    }
+  };
+  const isLocked = (pos: Position) => [pos.slot, ...pos.alsoSlots].some((s) => lockedKeys.has(keyOf({ ...pos, slot: s })));
+
+  // Blocchi Ped Urg del mese decisi per primi (ven P → sab 12h → dom 12h → lun M): ognuno a chi ne ha fatti meno,
+  // così nei giorni feriali il motore sa già chi ha il blocco e gli dà meno Ped Urg.
+  const planned = new Set<string>();
+  const byDate = new Map(demand.map((day) => [day[0].date, day]));
   for (const day of demand) {
-    const open = day.filter(
-      (pos) => !pos.manualOnly && ![pos.slot, ...pos.alsoSlots].some((s) => lockedKeys.has(keyOf({ ...pos, slot: s }))),
-    );
+    const start = day.find((pos) => pos.blockAhead);
+    if (!start || isLocked(start)) continue;
+    const people = roster.activeOn(start.date).map((x) => x.person.id);
+    const cands = people.filter((p) => canTake(p, start));
+    if (!cands.length) continue;
+    const blockScore = (p: string) => blocksOf(p) * WEIGHTS.blocks + score(p, start);
+    const who = cands.reduce((a, b) => (blockScore(a) <= blockScore(b) ? a : b));
+    const chain = [start];
+    for (let i = 1; i <= 3; i++) {
+      const next = byDate.get(addDays(start.date, i))?.find((pos) => pos.slot === 'PEDU_M' && pos.idx === 0);
+      if (next) chain.push(next);
+    }
+    // Se la persona non è disponibile in un giorno, il blocco si ferma lì e il resto lo decide il giro normale.
+    for (const pos of chain) {
+      if (isLocked(pos) || !canTake(who, pos)) break;
+      assign(who, pos);
+      planned.add(keyOf(pos));
+    }
+  }
+
+  for (const day of demand) {
+    const open = day.filter((pos) => !pos.manualOnly && !isLocked(pos) && !planned.has(keyOf(pos)));
     // Chi il giorno prima faceva il posto collegato (blocco Ped Urg, scambio del weekend).
     const linkedOf = (pos: Position, cands: string[]) => {
       const prev = pos.prevDaySlot;
@@ -158,12 +248,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       if (cands.length) {
         const pool = linked.length ? linked : cands;
         const who = pool.reduce((a, b) => (score(a, pos) <= score(b, pos) ? a : b));
-        for (const slot of [pos.slot, ...pos.alsoSlots]) {
-          const a: Assignment = { date: pos.date, slot, idx: pos.idx, who, source: 'suggested' };
-          out.push(a);
-          board.add(a);
-          bump(who, slot);
-        }
+        assign(who, pos);
       } else if (pos.ruotaFallback) {
         out.push({ date: pos.date, slot: pos.slot, idx: pos.idx, who: RUOTA, source: 'suggested' });
       } else {
@@ -187,11 +272,15 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const lastDay = demand[demand.length - 1][0].date;
   for (const year of [3, 4, 5]) {
     const ids = roster.activeOn(lastDay).filter((x) => x.year === year).map((x) => x.person.id);
-    spread += variance(ids.map(totalOf)) * 2;
-    for (const f of BALANCED) spread += variance(ids.map((p) => countOf(p)[f]));
+    spread += variance(ids.map(totalOf)) * COST.spreadTotal;
+    spread += variance(ids.map(weekendOf)) * COST.spreadWeekend;
+    for (const f of BALANCED) spread += variance(ids.map((p) => countOf(p)[f])) * COST.spreadFamily;
   }
-  return { assignments: out, holes, cost: holes.length * 1000 + restViolations * 15 + brokenLinks * 20 + spread };
+  return { assignments: out, holes, cost: holes.length * COST.hole + restViolations * COST.weekendRest + brokenLinks * COST.brokenLink + spread };
 }
+
+/** Tentativi per mese: più tentativi, equilibrio migliore (e calcolo più lungo). */
+export const RUNS = 200;
 
 /**
  * Genera i suggerimenti del mese. Prova più volte con pareggi rotti a caso e tiene il risultato migliore:
@@ -202,7 +291,7 @@ export function suggestMonth(input: EngineInput): EngineResult {
   const demand = demandForMonth(input, roster);
   const rng = mulberry32(input.seed ?? 12345);
   let best: EngineResult | null = null;
-  for (let i = 0; i < (input.runs ?? 60); i++) {
+  for (let i = 0; i < (input.runs ?? RUNS); i++) {
     const r = runOnce(input, roster, demand, rng);
     if (!best || r.cost < best.cost) best = r;
   }

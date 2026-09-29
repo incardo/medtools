@@ -7,14 +7,16 @@ import { AvailabilityView } from './views/AvailabilityView';
 import { PeopleView } from './views/PeopleView';
 import { OverviewView } from './views/OverviewView';
 import { ParamsView } from './views/ParamsView';
+import { RulesView } from './views/RulesView';
 import { monthLabel } from './format';
-import { AvailabilityIcon, CalendarIcon, OverviewIcon, ParamsIcon, PeopleIcon } from './icons';
+import { AvailabilityIcon, CalendarIcon, OverviewIcon, ParamsIcon, PeopleIcon, RulesIcon } from './icons';
 
 const TABS = [
   ['calendario', 'Calendario', CalendarIcon],
   ['disponibilita', 'Disponibilità', AvailabilityIcon],
   ['persone', 'Persone', PeopleIcon],
   ['panoramica', 'Panoramica', OverviewIcon],
+  ['regole', 'Regole', RulesIcon],
   ['parametri', 'Parametri', ParamsIcon],
 ] as const;
 
@@ -79,6 +81,7 @@ export function App() {
           {tab === 'disponibilita' && <AvailabilityView {...props} />}
           {tab === 'persone' && <PeopleView {...props} />}
           {tab === 'panoramica' && <OverviewView {...props} />}
+          {tab === 'regole' && <RulesView {...props} />}
           {tab === 'parametri' && <ParamsView {...props} />}
         </main>
       )}

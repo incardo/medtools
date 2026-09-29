@@ -17,12 +17,14 @@ export class Roster {
   }
 
   /** Anno di corso della persona in quella data, o null se non è attiva. */
-  private yearCache = new Map<string, Year | null>();
+  private yearCache = new Map<string, Map<string, Year | null>>();
 
   yearOf(personId: string, date: string): Year | null {
-    const k = `${personId}|${date}`;
-    if (!this.yearCache.has(k)) this.yearCache.set(k, this.computeYear(personId, date));
-    return this.yearCache.get(k)!;
+    let byDate = this.yearCache.get(personId);
+    if (!byDate) this.yearCache.set(personId, (byDate = new Map()));
+    let out = byDate.get(date);
+    if (out === undefined) byDate.set(date, (out = this.computeYear(personId, date)));
+    return out;
   }
 
   private computeYear(personId: string, date: string): Year | null {

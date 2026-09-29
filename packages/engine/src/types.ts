@@ -123,6 +123,9 @@ export interface Position {
 
 export type History = Record<string, Partial<Record<Family, number>>>;
 
+/** Altri conteggi per il bilanciamento: giorni di weekend lavorati e blocchi Ped Urg (ven P → lun M) iniziati. */
+export type ExtraHistory = Record<string, { weekend: number; blocks: number }>;
+
 export interface EngineInput {
   month: string;
   people: Person[];
@@ -134,6 +137,8 @@ export interface EngineInput {
   locked: Assignment[];
   /** Conteggi dei mesi precedenti dello stesso anno di specializzazione. */
   history: History;
+  /** Giorni di weekend e blocchi Ped Urg dei mesi precedenti dello stesso anno. */
+  extraHistory?: ExtraHistory;
   /** Assegnazioni degli ultimi giorni del mese prima (per smonti). */
   previous?: Assignment[];
   runs?: number;

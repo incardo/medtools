@@ -2,6 +2,7 @@
   academicYearOf,
   addDays,
   countAssignments,
+  countExtras,
   monthsOfAcademicYear,
   type AbsenceKind,
   type AcademicYear,
@@ -106,6 +107,7 @@ export function engineInput(data: AppData, month: string): EngineInput {
   const earlier = monthsOfAcademicYear(ay.id).filter((m) => m < month);
   const historyAssignments = earlier.flatMap((m) => cellsToAssignments(data.assignments[m]));
   const history = countAssignments(historyAssignments);
+  const extraHistory = countExtras(historyAssignments);
   const firstDay = `${month}-01`;
   const previous = cellsToAssignments(data.assignments[prevMonth(month)]).filter((a) => a.date >= addDays(firstDay, -3));
   return {
@@ -120,8 +122,8 @@ export function engineInput(data: AppData, month: string): EngineInput {
     params: paramsFor(data, month),
     locked: cellsToAssignments(data.assignments[month]).filter((a) => a.source === 'manual'),
     history,
+    extraHistory,
     previous,
-    runs: 30,
   };
 }
 

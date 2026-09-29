@@ -170,6 +170,8 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
    - chi lavora in **PS sia sabato sia domenica** non lavora il **lunedì**;
    - chi fa **Ped Urg 12 ore (mattina + pomeriggio) sia sabato sia domenica** non lavora il **martedì**.
 4. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
+5. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
+6. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026)
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
@@ -341,6 +343,11 @@ medtools/
 ### Stato (prototipo, 28/09/2026)
 
 - `packages/engine`: motore TS con test (`npm test`). Regole in `src/rules.ts` (`buildDemand`), assegnazione in `src/engine.ts` (`suggestMonth`, `validate`).
+  - **Come assegna** (29/09/2026): (1) per ogni venerdì del mese decide prima il **blocco Ped Urg** (ven P → sab 12h → dom 12h → lun M) a chi ne ha fatti meno nell'anno (storico in `extraHistory`), fermandosi al primo giorno in cui la persona non è disponibile; (2) poi giorno per giorno, prima i posti collegati al giorno prima, poi quelli con meno candidati; (3) per ogni posto sceglie il punteggio più basso (`WEIGHTS`: turni dello stesso tipo, totale, **giorni di weekend** per i posti di sab/dom, smonto, disponibilità nel blocco); (4) ripete **`RUNS` = 200** tentativi e tiene quello con il costo più basso (`COST`: buchi, smonti, blocchi spezzati, varianza per anno di corso su totale, weekend e ogni tipo).
+  - Giorni di weekend e blocchi dei mesi precedenti: `countExtras` → `extraHistory` (in `apps/web/src/store.ts`, `engineInput`).
+  - Prestazioni: `addDays`, `weekday` e `yearOf` sono memorizzati (cache); 200 tentativi ≈ 3 s nel browser.
+  - Ogni clic su "Genera suggerimenti" usa un seme casuale diverso: il risultato cambia ma resta ugualmente equilibrato.
+- Scheda **Regole** (`apps/web/src/views/RulesView.tsx`): mostra a tutti le regole seguite dal motore. La tabella "chi copre ogni posto" è generata da `buildDemand` su una settimana tipo (con e senza V anno); vincoli da `yearCanCover`, indisponibilità da `ABSENCE_INFO`/`ABSENCE_BLOCKS`, pesi da `WEIGHTS`/`COST`/`RUNS`. Se cambiano le regole nel motore, la pagina si aggiorna da sola; i testi descrittivi (elenchi puntati) vanno invece aggiornati a mano.
 - `apps/web`: Vite + React. **Dati condivisi** tra tutti gli utenti su **Cloudflare D1** (database `medtools`), letti e scritti da Pages Functions in `apps/web/functions/api/` (`GET/POST /api/data`).
   - I dati sono spezzati in record chiave → JSON (una persona, un'iscrizione, un'assenza, una cella del calendario, un nome della ruota comune): ogni modifica invia solo i record cambiati, l'ultima scrittura vince record per record. Più persone possono lavorare insieme (es. Disponibilità) senza sovrascriversi. Codice in `apps/web/src/sync.ts`; schema in `apps/web/migrations/`.
   - Le modifiche degli altri arrivano con un controllo ogni 8 secondi, solo mentre la pagina è aperta e visibile.

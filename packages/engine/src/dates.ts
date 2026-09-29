@@ -9,13 +9,23 @@ function fromUtc(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+// Il motore chiama queste funzioni centinaia di migliaia di volte sugli stessi pochi giorni: si memorizzano.
+const addCache = new Map<string, Map<number, string>>();
+const weekdayCache = new Map<string, number>();
+
 export function addDays(date: string, n: number): string {
-  return fromUtc(toUtc(date) + n * DAY_MS);
+  let byN = addCache.get(date);
+  if (!byN) addCache.set(date, (byN = new Map()));
+  let out = byN.get(n);
+  if (out === undefined) byN.set(n, (out = fromUtc(toUtc(date) + n * DAY_MS)));
+  return out;
 }
 
 /** 0 = domenica … 6 = sabato */
 export function weekday(date: string): number {
-  return new Date(toUtc(date)).getUTCDay();
+  let out = weekdayCache.get(date);
+  if (out === undefined) weekdayCache.set(date, (out = new Date(toUtc(date)).getUTCDay()));
+  return out;
 }
 
 export function isWeekend(date: string): boolean {

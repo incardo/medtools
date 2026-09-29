@@ -50,6 +50,12 @@ export const OverviewIcon = () => (
   </Icon>
 );
 
+export const RulesIcon = () => (
+  <Icon>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </Icon>
+);
+
 export const ParamsIcon = () => (
   <Icon>
     <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4" />

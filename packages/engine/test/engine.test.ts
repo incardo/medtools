@@ -4,7 +4,9 @@ import {
   academicYearOf,
   addDays,
   buildDemand,
+  countExtras,
   daysOfMonth,
+  isWeekend,
   keyOf,
   makeRoster,
   monthsOfAcademicYear,
@@ -309,6 +311,45 @@ describe('motore', () => {
   it('il calendario suggerito non ha errori di validazione', () => {
     const errors = validate(input, res.assignments).filter((w) => w.level === 'error');
     expect(errors).toEqual([]);
+  });
+
+  it('bilancia i giorni di weekend lavorati dentro ogni anno di corso', () => {
+    for (const year of [5, 4, 3]) {
+      const ids = input.enrollments.filter((e) => e.year === year).map((e) => e.personId);
+      const days = ids.map((id) => new Set(res.assignments.filter((a) => a.who === id && isWeekend(a.date)).map((a) => a.date)).size);
+      expect(Math.max(...days) - Math.min(...days)).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('i blocchi Ped Urg del mese vanno a persone diverse e pesano sui Ped Urg feriali', () => {
+    const starts = res.assignments.filter((a) => a.slot === 'PEDU_P' && weekday(a.date) === 5).map((a) => a.who);
+    expect(starts.length).toBe(4); // novembre 2026: venerdì 6, 13, 20, 27
+    expect(new Set(starts).size).toBe(4);
+    const ids = input.enrollments.filter((e) => e.year === 4).map((e) => e.personId);
+    const pedu = ids.map((id) => res.assignments.filter((a) => a.who === id && a.slot.startsWith('PEDU')).length);
+    expect(Math.max(...pedu) - Math.min(...pedu)).toBeLessThanOrEqual(2);
+  });
+
+  it('con lo storico i blocchi Ped Urg vanno prima a chi non ne ha fatti', () => {
+    const ids = input.enrollments.filter((e) => e.year === 4).map((e) => e.personId);
+    const done = ids.slice(0, 4);
+    const extraHistory = Object.fromEntries(done.map((id) => [id, { weekend: 0, blocks: 1 }]));
+    const r = suggestMonth({ ...input, extraHistory });
+    const starts = r.assignments.filter((a) => a.slot === 'PEDU_P' && weekday(a.date) === 5).map((a) => a.who);
+    expect(starts.some((id) => done.includes(id))).toBe(false);
+  });
+
+  it('countExtras conta giorni di weekend e blocchi Ped Urg', () => {
+    const x = countExtras([
+      { date: '2026-11-06', slot: 'PEDU_P', idx: 0, who: 'kilo', source: 'suggested' },
+      { date: '2026-11-07', slot: 'PEDU_M', idx: 0, who: 'kilo', source: 'suggested' },
+      { date: '2026-11-07', slot: 'PEDU_P', idx: 0, who: 'kilo', source: 'suggested' },
+      { date: '2026-11-08', slot: 'PS_NOTTE', idx: 0, who: 'alfa', source: 'suggested' },
+      { date: '2026-11-09', slot: 'PS_NOTTE', idx: 0, who: RUOTA, source: 'suggested' },
+    ]);
+    expect(x.kilo).toEqual({ weekend: 1, blocks: 1 });
+    expect(x.alfa).toEqual({ weekend: 1, blocks: 0 });
+    expect(x[RUOTA]).toBeUndefined();
   });
 
   it('segnala assenze e doppi turni nelle modifiche manuali', () => {
