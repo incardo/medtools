@@ -61,9 +61,9 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect(ps('2026-11-06', 'P')).toEqual([[4], [3], [5]]);
   });
 
-  it('nessun posto PS feriale facoltativo: ogni posto ha un anno', () => {
+  it('ogni posto PS feriale ha un anno (tranne gli alti opzionali, a mano)', () => {
     for (const date of daysOfMonth('2026-11')) {
-      expect(buildDemand(date, ctx).filter((p) => p.manualOnly && p.slot !== 'BAMBI')).toEqual([]);
+      expect(buildDemand(date, ctx).filter((p) => p.manualOnly && p.slot !== 'BAMBI' && !p.slot.startsWith('PS_OPZ'))).toEqual([]);
     }
   });
 
@@ -355,6 +355,19 @@ describe('motore', () => {
     expect(x.kilo).toEqual({ weekend: 1, blocks: 1 });
     expect(x.alfa).toEqual({ weekend: 1, blocks: 0 });
     expect(x[RUOTA]).toBeUndefined();
+  });
+
+  it('alti opzionale: solo lun–ven, mai compilato dal motore, fuori dal bilanciamento', () => {
+    expect(buildDemand('2026-11-02', { vPresent: true }).filter((p) => p.slot.startsWith('PS_OPZ')).every((p) => p.manualOnly)).toBe(true);
+    expect(buildDemand('2026-11-07', { vPresent: true }).some((p) => p.slot.startsWith('PS_OPZ'))).toBe(false); // sab
+    expect(res.assignments.some((a) => a.slot.startsWith('PS_OPZ'))).toBe(false);
+    // Un volontario inserito a mano: quel giorno non riceve altri turni.
+    const extra: Assignment = { date: '2026-11-03', slot: 'PS_OPZ_M', idx: 0, who: 'kilo', source: 'manual' };
+    const r = suggestMonth(exampleInput({ locked: [extra] }));
+    expect(r.assignments.some((a) => a.date === '2026-11-03' && a.who === 'kilo')).toBe(false);
+    // Nel weekend la colonna non esiste: avviso.
+    const ws = validate(input, [{ date: '2026-11-07', slot: 'PS_OPZ_M', idx: 0, who: 'kilo', source: 'manual' }]);
+    expect(ws.some((w) => w.message === 'Posto non previsto in questo giorno')).toBe(true);
   });
 
   it('segnala assenze e doppi turni nelle modifiche manuali', () => {

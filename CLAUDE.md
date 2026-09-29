@@ -80,6 +80,7 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
 | `PS_NOTTE` | PS notte | |
 | `OBI_M` / `OBI_P` | Osservazione breve, mattina / pomeriggio | |
 | `PEDU_M` / `PEDU_P` | Pediatria Urgenza, mattina / pomeriggio | mattina feriale: **2 posti** (un IV e un III anno); pomeriggio: 1 posto (IV); weekend: un IV per 12h |
+| `PS_OPZ_M` / `PS_OPZ_P` | PS alti **opzionale**, mattina / pomeriggio | solo **lun–ven**; chiunque (III, IV, V); **solo a mano**, il motore non lo riempie; per chi vuole fare turni in più; **fuori dal bilanciamento e dal totale**, ma visibile in Panoramica ("Alti opz.") ed Excel; valgono le regole trasversali **[detto]** (29/09/2026) |
 | `BAMBI` | Bambi | **facoltativo**: può restare scoperto; si assegna solo a chi è interessato; **non entra nel bilanciamento** **[detto]** |
 | `AMB` | Ambulatorio | coperto dal **III anno** **[detto]** |
 
@@ -141,7 +142,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 | Gio | V + IV | III | V + III | IV |
 | Ven | V + III | IV | IV + III | V |
 
-Ogni posto PS feriale ha un anno di corso: non ci sono più posti facoltativi. In codice: `PS_FERIALE` in `packages/engine/src/rules.ts`.
+Ogni posto PS feriale ha un anno di corso; in più c'è l'**alti opzionale** (mattina e pomeriggio, lun–ven), compilato a mano da volontari. In codice: `PS_FERIALE` in `packages/engine/src/rules.ts`.
 
 ### Vincoli per gruppo **[detto]**
 

@@ -150,6 +150,11 @@ export function RulesView({ data, month }: ViewProps) {
           persone del V anno; il IV anno il giovedì e il sabato. Se nessuno è disponibile, lun–ven va la <b>ruota comune</b>.
         </li>
         <li>
+          <b>PS alti (opz.)</b>, mattina e pomeriggio dal lunedì al venerdì: un posto in più per chi vuole fare qualche turno extra. Si compila
+          a mano, lo può prendere chiunque, il motore non lo riempie e non entra nel bilanciamento né nel totale. Valgono comunque le regole
+          per tutti (un turno al giorno, smonto dopo la notte, indisponibilità).
+        </li>
+        <li>
           <b>Bambi</b> è facoltativo: si assegna a mano, solo a chi è interessato, e non entra nel bilanciamento.
         </li>
       </ul>

@@ -5,8 +5,8 @@ export const HEADERS: HeadNode[] = [
   {
     label: 'PS',
     children: [
-      { label: 'Mattina', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Verdi' }] },
-      { label: 'Pomeriggio', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Verdi' }] },
+      { label: 'Mattina', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Alti (opz.)' }, { label: 'Verdi' }] },
+      { label: 'Pomeriggio', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Alti (opz.)' }, { label: 'Verdi' }] },
       { label: 'Notte', children: [{ label: 'Specializzando' }, { label: 'Ruota comune' }] },
     ],
   },

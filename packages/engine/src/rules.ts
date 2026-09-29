@@ -4,6 +4,8 @@ import type { Fascia, Family, Position, SlotCode, Year } from './types';
 export const SLOT_INFO: Record<SlotCode, { family: Family; fascia: Fascia; label: string }> = {
   PS_ALTI_M: { family: 'PS_ALTI', fascia: 'M', label: 'PS alti M' },
   PS_ALTI_P: { family: 'PS_ALTI', fascia: 'P', label: 'PS alti P' },
+  PS_OPZ_M: { family: 'PS_OPZ', fascia: 'M', label: 'PS alti opz. M' },
+  PS_OPZ_P: { family: 'PS_OPZ', fascia: 'P', label: 'PS alti opz. P' },
   PS_VERDI_M: { family: 'PS_VERDI', fascia: 'M', label: 'PS verdi M' },
   PS_VERDI_P: { family: 'PS_VERDI', fascia: 'P', label: 'PS verdi P' },
   PS_NOTTE: { family: 'PS_NOTTE', fascia: 'N', label: 'Notte PS' },
@@ -19,9 +21,11 @@ export const SLOT_INFO: Record<SlotCode, { family: Family; fascia: Fascia; label
 export const COLUMNS: { slot: SlotCode; idx: number }[] = [
   { slot: 'PS_ALTI_M', idx: 0 },
   { slot: 'PS_ALTI_M', idx: 1 },
+  { slot: 'PS_OPZ_M', idx: 0 },
   { slot: 'PS_VERDI_M', idx: 0 },
   { slot: 'PS_ALTI_P', idx: 0 },
   { slot: 'PS_ALTI_P', idx: 1 },
+  { slot: 'PS_OPZ_P', idx: 0 },
   { slot: 'PS_VERDI_P', idx: 0 },
   { slot: 'PS_NOTTE', idx: 0 },
   { slot: 'OBI_M', idx: 0 },
@@ -100,6 +104,8 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
       const { alti, verdi } = PS_FERIALE[wd][f];
       drafts.push({ slot: `PS_ALTI_${f}`, idx: 0, years: who(alti[0]) });
       drafts.push({ slot: `PS_ALTI_${f}`, idx: 1, years: who(alti[1]) });
+      // Alti opzionale: chiunque, solo a mano, fuori dal bilanciamento.
+      drafts.push({ slot: `PS_OPZ_${f}`, idx: 0, years: [5, 4, 3], manualOnly: true });
       drafts.push({ slot: `PS_VERDI_${f}`, idx: 0, years: who(verdi) });
     }
     drafts.push(

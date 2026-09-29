@@ -226,6 +226,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                         : pos.manualOnly
                           ? col.slot === 'BAMBI'
                             ? 'Bambi: facoltativo, solo chi è interessato'
+                            : col.slot.startsWith('PS_OPZ')
+                            ? 'Alti opzionale: per chi vuole fare un turno in più. Si compila a mano, non entra nel bilanciamento'
                             : 'Posto facoltativo: si compila a mano con chi è disponibile'
                           : `Regola: ${pos.years.map((y) => YEAR_LABEL[y]).join(' / ')} anno${pos.ruotaFallback ? ', altrimenti ruota comune' : ''}`,
                       ...ws.map((w) => w.message),

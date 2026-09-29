@@ -3,6 +3,9 @@ export type Year = 3 | 4 | 5;
 export type SlotCode =
   | 'PS_ALTI_M'
   | 'PS_ALTI_P'
+  /** PS alti opzionale (lun–ven): solo a mano, per chi vuole fare un turno in più. */
+  | 'PS_OPZ_M'
+  | 'PS_OPZ_P'
   | 'PS_VERDI_M'
   | 'PS_VERDI_P'
   | 'PS_NOTTE'
@@ -14,7 +17,7 @@ export type SlotCode =
   | 'AMB';
 
 /** Famiglia di turno usata per il bilanciamento e la panoramica. */
-export type Family = 'PS_ALTI' | 'PS_VERDI' | 'PS_NOTTE' | 'OBI' | 'PEDU' | 'AMB' | 'BAMBI';
+export type Family = 'PS_ALTI' | 'PS_OPZ' | 'PS_VERDI' | 'PS_NOTTE' | 'OBI' | 'PEDU' | 'AMB' | 'BAMBI';
 
 export type Fascia = 'M' | 'P' | 'N';
 

@@ -8,6 +8,7 @@ import type { HeadNode } from './calendarHeaders';
  */
 export const SUMMARY_TURNS: { key: string; slots: SlotCode[] }[] = [
   { key: 'PS_ALTI', slots: ['PS_ALTI_M', 'PS_ALTI_P'] },
+  { key: 'PS_OPZ', slots: ['PS_OPZ_M', 'PS_OPZ_P'] },
   { key: 'PS_VERDI', slots: ['PS_VERDI_M', 'PS_VERDI_P'] },
   { key: 'PS_NOTTE', slots: ['PS_NOTTE'] },
   { key: 'OBI', slots: ['OBI_M', 'OBI_P'] },
@@ -21,7 +22,7 @@ export const SUMMARY_EXTRA = ['total', 'weekend', 'ferie', 'indisp', 'parziali']
 export type SummaryExtra = (typeof SUMMARY_EXTRA)[number];
 
 export const SUMMARY_HEADERS: HeadNode[] = [
-  { label: 'PS', children: [{ label: 'Alti' }, { label: 'Verdi' }, { label: 'Notte' }] },
+  { label: 'PS', children: [{ label: 'Alti' }, { label: 'Alti opz.' }, { label: 'Verdi' }, { label: 'Notte' }] },
   { label: 'OBI' },
   { label: 'Ped Urg' },
   { label: 'Bambi' },
@@ -33,7 +34,7 @@ export const SUMMARY_HEADERS: HeadNode[] = [
 
 export interface PersonSummary {
   slots: Partial<Record<SlotCode, number>>;
-  /** Turni del periodo, Bambi escluso (non entra nel bilanciamento). */
+  /** Turni del periodo, senza Bambi e alti opzionale (non entrano nel bilanciamento). */
   total: number;
   /** Giorni di sabato o domenica con almeno un turno. */
   weekend: number;
@@ -41,6 +42,9 @@ export interface PersonSummary {
   indisp: number;
   parziali: number;
 }
+
+/** Turni che non entrano nel totale né nel bilanciamento. */
+const OUTSIDE_TOTAL: SlotCode[] = ['BAMBI', 'PS_OPZ_M', 'PS_OPZ_P'];
 
 /** Conteggi per persona su uno o più mesi. La ruota comune non è conteggiata. */
 export function summarize(data: AppData, months: string[]): Record<string, PersonSummary> {
@@ -52,7 +56,7 @@ export function summarize(data: AppData, months: string[]): Record<string, Perso
       if (a.who === RUOTA) continue;
       const s = get(a.who);
       s.slots[a.slot] = (s.slots[a.slot] ?? 0) + 1;
-      if (a.slot !== 'BAMBI') s.total++;
+      if (!OUTSIDE_TOTAL.includes(a.slot)) s.total++;
       if (isWeekend(a.date)) weekendDays.set(a.who, (weekendDays.get(a.who) ?? new Set()).add(a.date));
     }
     for (const p of data.people) {

@@ -142,7 +142,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
 
   const counts: Record<string, Record<Family, number>> = {};
   const countOf = (p: string) =>
-    (counts[p] ??= { PS_ALTI: 0, PS_VERDI: 0, PS_NOTTE: 0, OBI: 0, PEDU: 0, AMB: 0, BAMBI: 0, ...input.history[p] });
+    (counts[p] ??= { PS_ALTI: 0, PS_OPZ: 0, PS_VERDI: 0, PS_NOTTE: 0, OBI: 0, PEDU: 0, AMB: 0, BAMBI: 0, ...input.history[p] });
   const totalOf = (p: string) => BALANCED.reduce((s, f) => s + countOf(p)[f], 0);
   const extra = input.extraHistory ?? {};
   const weekendDays = new Map<string, Set<string>>();
@@ -339,6 +339,13 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     if (same.length > 1 && !twelveH) w('error', 'Più turni nello stesso giorno');
     if (board.slots(a.who, addDays(a.date, -1)).includes('PS_NOTTE')) w('error', 'Smonto notte non rispettato');
     if (board.weekendRestDue(a.who, a.date)) w('warn', 'Smonto dopo il weekend non rispettato');
+  }
+
+  // Posti scritti a mano in giorni in cui non esistono (es. alti opzionale nel weekend).
+  const exists = new Set(demand.flatMap((day) => day.flatMap((p) => [p.slot, ...p.alsoSlots].map((s) => keyOf({ ...p, slot: s })))));
+  for (const a of assignments) {
+    if (a.who && !exists.has(keyOf(a)))
+      out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level: 'warn', message: 'Posto non previsto in questo giorno' });
   }
 
   for (const day of demand) {

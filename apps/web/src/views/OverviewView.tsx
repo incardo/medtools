@@ -76,7 +76,7 @@ export function OverviewView({ data, month }: ViewProps) {
       </div>
       <p className="hint">
         Turni per tipo; mattina e pomeriggio si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due. <b>Weekend</b> = giorni di sabato o domenica
-        lavorati. Il totale esclude Bambi; la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
+        lavorati. Il totale esclude Bambi e gli alti opzionali (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
       <div className="legend">
         <span className="chip" style={{ background: 'rgba(46, 144, 250, 0.35)' }}>
