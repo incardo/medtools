@@ -533,6 +533,46 @@ td.strong {
   font-weight: 700;
 }
 
+/* Panoramica */
+.overview td.num {
+  text-align: center;
+  min-width: 44px;
+  padding: 4px 6px;
+}
+.overview td.na {
+  color: #b8c0cc;
+}
+.overview tr.group-row > * {
+  background: var(--weekend);
+  border-top: 2px solid var(--muted);
+  font-size: 12px;
+}
+.overview th.name {
+  min-width: 170px;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.seg button {
+  border: none;
+  border-radius: 0;
+  background: var(--surface);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg button + button {
+  border-left: 1px solid var(--border);
+}
+.seg button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
 .composition {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

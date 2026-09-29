@@ -44,4 +44,6 @@ export function headerRows(nodes: HeadNode[] = HEADERS): HeadCell[][] {
 }
 
 /** Ultima colonna (contata da 0) di ogni reparto: lì va il bordo spesso. */
-export const GROUP_ENDS = new Set(headerRows()[0].map((h) => h.col + h.colSpan - 1));
+export const groupEnds = (rows: HeadCell[][]) => new Set(rows[0].map((h) => h.col + h.colSpan - 1));
+
+export const GROUP_ENDS = groupEnds(headerRows());

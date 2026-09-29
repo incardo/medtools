@@ -1,8 +1,9 @@
 import type { Borders, Cell as XCell, Fill, Worksheet } from 'exceljs';
-import { COLUMNS, RUOTA, countAssignments, daysOfMonth, isWeekend, keyOf, type Family, type Position, type Roster, type Year } from '@medtools/engine';
-import { YEAR_LABEL, cellsToAssignments, type AppData, type Cell } from './store';
+import { COLUMNS, RUOTA, daysOfMonth, isWeekend, keyOf, type Position, type Roster, type Year } from '@medtools/engine';
+import { YEAR_LABEL, type AppData, type Cell } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
-import type { HeadCell } from './calendarHeaders';
+import { groupEnds, headerRows, type HeadCell } from './calendarHeaders';
+import { SUMMARY_COLS, SUMMARY_HEADERS, summarize, summaryValue } from './summary';
 
 /** Stessi colori dell'app (styles.css), in ARGB. */
 const COLOR = {
@@ -17,16 +18,6 @@ const COLOR = {
   border: 'FFB8C0CC',
   muted: 'FF6B7482',
 } as const;
-
-const FAMILIES: [Family, string][] = [
-  ['PS_ALTI', 'PS alti'],
-  ['PS_VERDI', 'PS verdi'],
-  ['PS_NOTTE', 'Notti PS'],
-  ['OBI', 'OBI'],
-  ['PEDU', 'Ped Urg'],
-  ['AMB', 'Ambulatorio'],
-  ['BAMBI', 'Bambi'],
-];
 
 const fill = (argb: string): Fill => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
 const thin = { style: 'thin' as const, color: { argb: COLOR.border } };
@@ -178,19 +169,49 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
   });
 
   // ---------- Foglio 2: riepilogo per persona ----------
+  // Stesse colonne della Panoramica: reparto → fascia → tipo, poi totale, weekend e assenze.
+  const sumHead = headerRows(SUMMARY_HEADERS);
+  const sumEnds = groupEnds(sumHead);
+  const sumTop = 4;
+  const sumFirst = sumTop + sumHead.length; // prima riga delle persone
+  const sumWidth = 2 + SUMMARY_COLS.length;
   const rs = wb.addWorksheet('Riepilogo', {
-    views: [{ state: 'frozen', ySplit: 4 }],
-    pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '4:4' },
+    views: [{ state: 'frozen', xSplit: 2, ySplit: sumFirst - 1 }],
+    pageSetup: {
+      paperSize: 9,
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      printTitlesRow: `${sumTop}:${sumFirst - 1}`,
+    },
   });
-  const sumHead = ['Persona', 'Anno', ...FAMILIES.map(([, l]) => l), 'Totale', 'Ferie (gg)'];
-  title(rs, `Riepilogo turni · ${Label}`, 'Turni del mese per persona. Il totale esclude Bambi; la ruota comune non è conteggiata.', sumHead.length);
-  sumHead.forEach((h, i) => headCell(rs.getCell(4, i + 1), h, true));
-  rs.getRow(4).height = 20;
+  title(
+    rs,
+    `Riepilogo turni · ${Label}`,
+    'Turni del mese per fascia e tipo; un turno da 12h conta come due. Weekend = giorni di sabato o domenica lavorati. Il totale esclude Bambi; la ruota comune non è conteggiata.',
+    sumWidth,
+  );
+  for (const [c, text] of [
+    [1, 'Persona'],
+    [2, 'Anno'],
+  ] as const) {
+    rs.mergeCells(sumTop, c, sumFirst - 1, c);
+    headCell(rs.getCell(sumTop, c), text, true);
+  }
+  sumHead.forEach((row, r) =>
+    row.forEach((h) => {
+      const c = 3 + h.col;
+      if (h.colSpan > 1 || h.rowSpan > 1) rs.mergeCells(sumTop + r, c, sumTop + r + h.rowSpan - 1, c + h.colSpan - 1);
+      headCell(rs.getCell(sumTop + r, c), h.label, r === 0);
+    }),
+  );
+  sumHead.forEach((_, r) => (rs.getRow(sumTop + r).height = r === 0 ? 20 : 18));
   rs.getColumn(1).width = 22;
-  rs.getColumn(2).width = 8;
-  for (let i = 3; i <= sumHead.length; i++) rs.getColumn(i).width = 11;
+  rs.getColumn(2).width = 7;
+  for (let i = 3; i <= sumWidth; i++) rs.getColumn(i).width = 9;
 
-  const counts = countAssignments(cellsToAssignments(cells));
+  const sums = summarize(data, [month]);
   const days = daysOfMonth(month);
   const people = data.people
     .map((p) => {
@@ -200,21 +221,20 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
     .filter((x) => x !== null)
     .sort((a, b) => b.year - a.year || a.p.name.localeCompare(b.p.name));
 
+  const totalCol = 3 + SUMMARY_COLS.indexOf('total');
   people.forEach(({ p, year }, i) => {
-    const c = counts[p.id] ?? {};
-    const total = FAMILIES.filter(([f]) => f !== 'BAMBI').reduce((s, [f]) => s + (c[f] ?? 0), 0);
-    const ferie = days.filter((d) => data.absences[`${p.id}|${d}`] === 'F').length;
-    const row = rs.getRow(5 + i);
-    row.values = [p.name, YEAR_LABEL[year], ...FAMILIES.map(([f]) => c[f] ?? 0), total, ferie];
-    row.eachCell({ includeEmpty: true }, (x, n) => {
-      x.border = box;
-      x.font = { size: 10, bold: n === 1 || n === sumHead.length - 1 };
+    const row = rs.getRow(sumFirst + i);
+    row.values = [p.name, YEAR_LABEL[year], ...SUMMARY_COLS.map((c) => summaryValue(sums[p.id], c))];
+    // Riga più spessa quando cambia l'anno di corso
+    const lastOfYear = people[i + 1] && people[i + 1].year !== year;
+    for (let n = 1; n <= sumWidth; n++) {
+      const x = row.getCell(n);
+      x.border = { ...box, ...(n === 2 || sumEnds.has(n - 3) ? { right: medium } : {}), ...(lastOfYear ? { bottom: medium } : {}) };
+      x.font = { size: 10, bold: n === 1 || n === totalCol };
       x.alignment = { horizontal: n === 1 ? 'left' : 'center', vertical: 'middle' };
       if (n <= 2) x.fill = fill(COLOR[year]);
       if (n > 2 && x.value === 0) x.font = { size: 10, color: { argb: 'FFB8C0CC' } };
-    });
-    // Riga più spessa quando cambia l'anno di corso
-    if (people[i + 1] && people[i + 1].year !== year) row.eachCell({ includeEmpty: true }, (x) => (x.border = { ...box, bottom: medium }));
+    }
   });
 
   const buf = await wb.xlsx.writeBuffer();

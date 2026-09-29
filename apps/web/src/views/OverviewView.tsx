@@ -1,91 +1,162 @@
-import { useMemo } from 'react';
-import { countAssignments, daysOfMonth, makeRoster, monthsOfAcademicYear, type Family, type Year } from '@medtools/engine';
-import { YEAR_LABEL, academicYearFor, cellsToAssignments, engineInput } from '../store';
+import { Fragment, useMemo, useState } from 'react';
+import { daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Person, type SlotCode, type Year } from '@medtools/engine';
+import { YEAR_LABEL, academicYearFor, engineInput } from '../store';
 import { monthLabel, type ViewProps } from '../format';
+import { HEADER_DEPTH, groupEnds, headerRows } from '../calendarHeaders';
+import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_SLOTS, slotsByYear, summarize, summaryValue, type SummaryCol } from '../summary';
 
-const FAMILIES: [Family, string][] = [
-  ['PS_ALTI', 'PS alti'],
-  ['PS_VERDI', 'PS verdi'],
-  ['PS_NOTTE', 'Notti'],
-  ['OBI', 'OBI'],
-  ['PEDU', 'Ped Urg'],
-  ['AMB', 'Amb'],
-  ['BAMBI', 'Bambi'],
-];
+const HEAD_ROWS = headerRows(SUMMARY_HEADERS);
+const ENDS = groupEnds(HEAD_ROWS);
+/** Colonne confrontate con la media del proprio anno di corso (le assenze no). */
+const BALANCED: SummaryCol[] = [...SUMMARY_SLOTS, 'total', 'weekend'];
+
+type Mode = 'mese' | 'anno';
+
+/** Sfondo in base allo scarto dalla media del gruppo: blu sotto, arancione sopra, più intenso quanto più lontano. */
+function heat(v: number, mean: number, maxDev: number): string | undefined {
+  const d = v - mean;
+  if (Math.abs(d) < 1) return undefined;
+  const a = 0.12 + (0.45 * Math.abs(d)) / Math.max(maxDev, 1);
+  return d < 0 ? `rgba(46, 144, 250, ${a.toFixed(2)})` : `rgba(247, 144, 9, ${a.toFixed(2)})`;
+}
 
 export function OverviewView({ data, month }: ViewProps) {
+  const [mode, setMode] = useState<Mode>('mese');
   const ay = academicYearFor(data, month);
   const days = daysOfMonth(month);
-  const roster = useMemo(() => makeRoster(engineInput(data, month)), [data, month]);
-  const monthCounts = useMemo(() => countAssignments(cellsToAssignments(data.assignments[month])), [data, month]);
-  const yearCounts = useMemo(
-    () =>
-      countAssignments(
-        monthsOfAcademicYear(ay.id)
-          .filter((m) => m <= month)
-          .flatMap((m) => cellsToAssignments(data.assignments[m])),
-      ),
-    [data, month, ay.id],
+  const input = useMemo(() => engineInput(data, month), [data, month]);
+  const roster = useMemo(() => makeRoster(input), [input]);
+  const expected = useMemo(() => slotsByYear(demandForMonth(input, roster)), [input, roster]);
+  const months = useMemo(
+    () => (mode === 'mese' ? [month] : monthsOfAcademicYear(ay.id).filter((m) => m <= month)),
+    [mode, month, ay.id],
   );
+  const sums = useMemo(() => summarize(data, months), [data, months]);
 
-  const rows = data.people
-    .map((p) => {
+  const groups = useMemo(() => {
+    const byYear = new Map<Year, Person[]>();
+    for (const p of data.people) {
       const first = days.find((d) => roster.yearOf(p.id, d));
-      return first ? { p, year: roster.yearOf(p.id, first)! as Year } : null;
-    })
-    .filter((x) => x !== null)
-    .sort((a, b) => b.year - a.year || a.p.name.localeCompare(b.p.name));
+      if (!first) continue;
+      const y = roster.yearOf(p.id, first)!;
+      byYear.set(y, [...(byYear.get(y) ?? []), p]);
+    }
+    return ([5, 4, 3] as Year[])
+      .filter((y) => byYear.has(y))
+      .map((year) => {
+        const people = byYear.get(year)!.sort((a, b) => a.name.localeCompare(b.name));
+        const pertinent = (p: Person, col: SummaryCol) =>
+          col === 'BAMBI' ? p.bambiInterest : (SUMMARY_SLOTS as string[]).includes(col) ? expected[year].has(col as SlotCode) : true;
+        // Media e scarto massimo per colonna, solo tra chi quel turno lo fa per regola.
+        const stats = new Map<SummaryCol, { mean: number; maxDev: number }>();
+        for (const col of BALANCED) {
+          const vs = people.filter((p) => pertinent(p, col)).map((p) => summaryValue(sums[p.id], col));
+          if (!vs.length) continue;
+          const mean = vs.reduce((s, v) => s + v, 0) / vs.length;
+          stats.set(col, { mean, maxDev: Math.max(...vs.map((v) => Math.abs(v - mean))) });
+        }
+        return { year, people, pertinent, stats };
+      });
+  }, [data.people, days, roster, expected, sums]);
 
-  const total = (c: Partial<Record<Family, number>> | undefined) =>
-    FAMILIES.filter(([f]) => f !== 'BAMBI').reduce((s, [f]) => s + (c?.[f] ?? 0), 0);
+  const cls = (col: number, extra = '') => `num${ENDS.has(col) ? ' gend' : ''}${extra}`;
 
   return (
     <section>
       <div className="toolbar">
         <h2>Panoramica · {monthLabel(month)}</h2>
+        <div className="seg" role="group" aria-label="Periodo">
+          <button className={mode === 'mese' ? 'active' : ''} onClick={() => setMode('mese')}>
+            Mese
+          </button>
+          <button className={mode === 'anno' ? 'active' : ''} onClick={() => setMode('anno')}>
+            Anno {ay.id} fino a {monthLabel(month).split(' ')[0]}
+          </button>
+        </div>
       </div>
       <p className="hint">
-        Numero = turni nel mese; tra parentesi il totale dell'anno {ay.id} fino a questo mese (lo storico si azzera a novembre). Bambi e la
-        ruota comune non entrano nel bilanciamento.
+        Turni per fascia e tipo; un turno da 12h conta come due (mattina + pomeriggio). <b>Weekend</b> = giorni di sabato o domenica
+        lavorati. Il totale esclude Bambi; la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
+      <div className="legend">
+        <span className="chip" style={{ background: 'rgba(46, 144, 250, 0.35)' }}>
+          sotto la media del proprio anno
+        </span>
+        <span className="chip" style={{ background: 'rgba(247, 144, 9, 0.35)' }}>
+          sopra la media del proprio anno
+        </span>
+        <span className="chip">· turno non previsto per quell'anno</span>
+      </div>
       <div className="table-wrap">
-        <table className="overview">
+        <table className="overview cal">
           <thead>
-            <tr>
-              <th className="sticky">Persona</th>
-              {FAMILIES.map(([, l]) => (
-                <th key={l}>{l}</th>
-              ))}
-              <th>Totale</th>
-              <th>Ferie</th>
-              <th>Indisp.</th>
-              <th>Parziali</th>
-            </tr>
+            {HEAD_ROWS.map((row, r) => (
+              <tr key={r}>
+                {r === 0 && (
+                  <th rowSpan={HEADER_DEPTH} className="sticky">
+                    Persona
+                  </th>
+                )}
+                {row.map((h) => (
+                  <th
+                    key={h.col}
+                    colSpan={h.colSpan}
+                    rowSpan={h.rowSpan}
+                    className={(r < 2 ? 'group' : '') + (ENDS.has(h.col + h.colSpan - 1) ? ' gend' : '')}
+                  >
+                    {h.label}
+                  </th>
+                ))}
+              </tr>
+            ))}
           </thead>
           <tbody>
-            {rows.map(({ p, year }, i) => {
-              const abs = days.map((d) => data.absences[`${p.id}|${d}`]);
-              return (
-                <tr key={p.id} className={i > 0 && rows[i - 1].year !== year ? 'sep' : ''}>
+            {groups.map(({ year, people, pertinent, stats }) => (
+              <Fragment key={year}>
+                <tr className="group-row">
                   <th className="sticky name">
-                    <span className={`chip y${year}`}>{YEAR_LABEL[year]}</span> {p.name}
+                    <span className={`chip y${year}`}>{YEAR_LABEL[year]} anno</span>{' '}
+                    <span className="muted">
+                      {people.length} {people.length === 1 ? 'persona' : 'persone'} · media
+                    </span>
                   </th>
-                  {FAMILIES.map(([f]) => (
-                    <td key={f} className="num">
-                      {monthCounts[p.id]?.[f] ?? 0} <span className="muted">({yearCounts[p.id]?.[f] ?? 0})</span>
-                    </td>
-                  ))}
-                  <td className="num strong">
-                    {total(monthCounts[p.id])} <span className="muted">({total(yearCounts[p.id])})</span>
-                  </td>
-                  <td className="num">{abs.filter((k) => k === 'F').length}</td>
-                  <td className="num">{abs.filter((k) => k === 'X').length}</td>
-                  <td className="num" title="Giorni con no M/P/N o solo M/P/N">
-                    {abs.filter((k) => k && k !== 'F' && k !== 'X').length}
-                  </td>
+                  {SUMMARY_COLS.map((col, i) => {
+                    const s = stats.get(col);
+                    return (
+                      <td key={col} className={cls(i, ' muted')}>
+                        {s ? s.mean.toFixed(1).replace('.', ',') : ''}
+                      </td>
+                    );
+                  })}
                 </tr>
-              );
-            })}
+                {people.map((p) => (
+                  <tr key={p.id}>
+                    <th className="sticky name">{p.name}</th>
+                    {SUMMARY_COLS.map((col, i) => {
+                      const v = summaryValue(sums[p.id], col);
+                      const s = stats.get(col);
+                      if (!pertinent(p, col) && !v)
+                        return (
+                          <td key={col} className={cls(i, ' na')} title="Non previsto per questo anno di corso">
+                            ·
+                          </td>
+                        );
+                      const bg = s && pertinent(p, col) ? heat(v, s.mean, s.maxDev) : undefined;
+                      return (
+                        <td
+                          key={col}
+                          className={cls(i, col === 'total' ? ' strong' : '')}
+                          style={bg ? { background: bg } : undefined}
+                          title={s ? `Media ${YEAR_LABEL[year]} anno: ${s.mean.toFixed(1).replace('.', ',')}` : undefined}
+                        >
+                          {v}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
           </tbody>
         </table>
       </div>
