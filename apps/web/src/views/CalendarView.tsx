@@ -21,15 +21,9 @@ import {
 import { YEAR_LABEL, cellsToAssignments, engineInput, type Cell } from '../store';
 import { dayLabel, monthLabel, type ViewProps } from '../format';
 import { exportExcel } from '../exportExcel';
+import { HEADER_DEPTH, headerRows } from '../calendarHeaders';
 
-const HEADERS: { group: string; cols: string[] }[] = [
-  { group: 'PS mattina', cols: ['Alti', 'Alti', 'Verdi'] },
-  { group: 'PS pomeriggio', cols: ['Alti', 'Alti', 'Verdi'] },
-  { group: 'PS notte', cols: ['Specializzando', 'Ruota comune'] },
-  { group: 'OBI', cols: ['M', 'P'] },
-  { group: 'Ped Urg', cols: ['M', 'M', 'P'] },
-  { group: 'Altro', cols: ['Bambi', 'Amb'] },
-];
+const HEAD_ROWS = headerRows();
 
 export function CalendarView({ data, setData, month }: ViewProps) {
   const [busy, setBusy] = useState(false);
@@ -116,7 +110,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
   const exportXlsx = async () => {
     setExporting(true);
     try {
-      await exportExcel({ data, month, demand, cells, roster, headers: HEADERS });
+      await exportExcel({ data, month, demand, cells, roster, headers: HEAD_ROWS });
     } catch (e) {
       alert(`Export non riuscito: ${e instanceof Error ? e.message : e}`);
     } finally {
@@ -173,20 +167,25 @@ export function CalendarView({ data, setData, month }: ViewProps) {
       <div className="table-wrap">
         <table className="cal">
           <thead>
-            <tr>
-              <th rowSpan={2} className="sticky">Giorno</th>
-              {HEADERS.map((h) => (
-                <th key={h.group} colSpan={h.cols.length} className="group">
-                  {h.group}
-                </th>
-              ))}
-              <th rowSpan={2} className="free-head">
-                Disponibili (non in turno)
-              </th>
-            </tr>
-            <tr>
-              {HEADERS.flatMap((h) => h.cols.map((c, i) => <th key={h.group + i}>{c}</th>))}
-            </tr>
+            {HEAD_ROWS.map((row, r) => (
+              <tr key={r}>
+                {r === 0 && (
+                  <th rowSpan={HEADER_DEPTH} className="sticky">
+                    Giorno
+                  </th>
+                )}
+                {row.map((h) => (
+                  <th key={h.col} colSpan={h.colSpan} rowSpan={h.rowSpan} className={r < 2 ? 'group' : undefined}>
+                    {h.label}
+                  </th>
+                ))}
+                {r === 0 && (
+                  <th rowSpan={HEADER_DEPTH} className="free-head">
+                    Disponibili (non in turno)
+                  </th>
+                )}
+              </tr>
+            ))}
           </thead>
           <tbody>
             {demand.map((day) => {

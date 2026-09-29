@@ -268,6 +268,9 @@ thead th {
 .cal thead tr:nth-child(2) th {
   top: 25px;
 }
+.cal thead tr:nth-child(3) th {
+  top: 50px;
+}
 th.group {
   text-align: center;
 }

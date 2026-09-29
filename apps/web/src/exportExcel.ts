@@ -2,6 +2,7 @@ import type { Borders, Cell as XCell, Fill, Worksheet } from 'exceljs';
 import { COLUMNS, RUOTA, countAssignments, daysOfMonth, isWeekend, keyOf, type Family, type Position, type Roster, type Year } from '@medtools/engine';
 import { YEAR_LABEL, cellsToAssignments, type AppData, type Cell } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
+import type { HeadCell } from './calendarHeaders';
 
 /** Stessi colori dell'app (styles.css), in ARGB. */
 const COLOR = {
@@ -56,7 +57,7 @@ export interface ExcelInput {
   demand: Position[][];
   cells: Record<string, Cell>;
   roster: Roster;
-  headers: { group: string; cols: string[] }[];
+  headers: HeadCell[][];
 }
 
 export async function exportExcel({ data, month, demand, cells, roster, headers }: ExcelInput) {
@@ -72,7 +73,7 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
 
   // ---------- Foglio 1: calendario ----------
   const ws = wb.addWorksheet('Turni', {
-    views: [{ state: 'frozen', xSplit: 1, ySplit: 5 }],
+    views: [{ state: 'frozen', xSplit: 1, ySplit: 6 }],
     pageSetup: {
       paperSize: 9, // A4
       orientation: 'landscape',
@@ -81,7 +82,7 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
       fitToHeight: 0,
       horizontalCentered: true,
       margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
-      printTitlesRow: '4:5',
+      printTitlesRow: '4:6',
     },
     headerFooter: { oddFooter: `&L&8Turni specializzandi · ${label}&R&8Pagina &P di &N` },
   });
@@ -95,24 +96,25 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
   ws.getColumn(1).width = 9;
   for (let i = 2; i <= width; i++) ws.getColumn(i).width = 13.5;
 
-  // Intestazioni su due righe: gruppo e sottocolonna. Un bordo spesso separa i gruppi.
+  // Intestazioni su tre righe: reparto, fascia, posto. Un bordo spesso separa reparti e fasce.
+  const top = 4;
+  const first = top + headers.length; // prima riga dei giorni
   const groupStarts = new Set<number>();
-  ws.mergeCells(4, 1, 5, 1);
-  headCell(ws.getCell(4, 1), 'Giorno', true);
-  let col = 2;
-  for (const h of headers) {
-    groupStarts.add(col);
-    ws.mergeCells(4, col, 4, col + h.cols.length - 1);
-    headCell(ws.getCell(4, col), h.group, true);
-    h.cols.forEach((c, i) => headCell(ws.getCell(5, col + i), c, false));
-    col += h.cols.length;
-  }
-  ws.getRow(4).height = 20;
-  ws.getRow(5).height = 18;
+  ws.mergeCells(top, 1, first - 1, 1);
+  headCell(ws.getCell(top, 1), 'Giorno', true);
+  headers.forEach((row, r) =>
+    row.forEach((h) => {
+      const c = 2 + h.col;
+      if (r < 2) groupStarts.add(c);
+      if (h.colSpan > 1 || h.rowSpan > 1) ws.mergeCells(top + r, c, top + r + h.rowSpan - 1, c + h.colSpan - 1);
+      headCell(ws.getCell(top + r, c), h.label, r === 0);
+    }),
+  );
+  headers.forEach((_, r) => (ws.getRow(top + r).height = r === 0 ? 20 : 18));
 
   demand.forEach((day, i) => {
     const date = day[0].date;
-    const r = ws.getRow(6 + i);
+    const r = ws.getRow(first + i);
     r.height = 18;
     const weekend = isWeekend(date);
     const { dow, day: dd } = dayLabel(date);
@@ -152,11 +154,11 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
       x.border = groupStarts.has(j + 2) ? { ...box, left: medium } : box;
     });
     // Separatore tra una settimana e l'altra
-    if (dow === 'dom') for (let j = 1; j <= width; j++) ws.getCell(6 + i, j).border = { ...ws.getCell(6 + i, j).border, bottom: medium };
+    if (dow === 'dom') for (let j = 1; j <= width; j++) ws.getCell(first + i, j).border = { ...ws.getCell(first + i, j).border, bottom: medium };
   });
 
   // Legenda sotto la tabella
-  const lr = 6 + demand.length + 1;
+  const lr = first + demand.length + 1;
   ws.getCell(lr, 1).value = 'Legenda';
   ws.getCell(lr, 1).font = { bold: true, size: 10, color: { argb: COLOR.muted } };
   const legend: [string, string][] = [
