@@ -95,8 +95,16 @@ select {
 }
 .brand {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   line-height: 1.2;
+}
+.brand > div {
+  display: flex;
+  flex-direction: column;
+}
+.brand svg {
+  flex: none;
 }
 .brand span {
   color: var(--muted);
@@ -265,11 +273,25 @@ thead th {
   font-size: 12px;
   font-weight: 600;
 }
-.cal thead tr:nth-child(2) th {
-  top: 25px;
+/* Calendario: l'intestazione su più righe resta fissa in blocco, così le righe non si sfalsano. */
+.cal thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
-.cal thead tr:nth-child(3) th {
-  top: 50px;
+.cal thead th:not(.sticky) {
+  position: static;
+}
+.cal thead th {
+  vertical-align: middle;
+  text-align: center;
+}
+.cal thead tr:last-child th,
+.cal thead th[rowspan='3'] {
+  border-bottom: 2px solid var(--muted);
+}
+.cal .gend {
+  border-right: 2px solid var(--muted);
 }
 th.group {
   text-align: center;

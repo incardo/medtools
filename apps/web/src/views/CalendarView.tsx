@@ -21,9 +21,13 @@ import {
 import { YEAR_LABEL, cellsToAssignments, engineInput, type Cell } from '../store';
 import { dayLabel, monthLabel, type ViewProps } from '../format';
 import { exportExcel } from '../exportExcel';
-import { HEADER_DEPTH, headerRows } from '../calendarHeaders';
+import { GROUP_ENDS, HEADER_DEPTH, headerRows } from '../calendarHeaders';
 
 const HEAD_ROWS = headerRows();
+const NIGHT = COLUMNS.findIndex((c) => c.slot === 'PS_NOTTE');
+/** Colonna del calendario (da 0, dopo "Giorno") di COLUMNS[i]: la ruota comune ne occupa una in più dopo la notte. */
+const bodyCol = (i: number) => i + (i > NIGHT ? 1 : 0);
+const gend = (col: number) => (GROUP_ENDS.has(col) ? ' gend' : '');
 
 export function CalendarView({ data, setData, month }: ViewProps) {
   const [busy, setBusy] = useState(false);
@@ -175,7 +179,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                   </th>
                 )}
                 {row.map((h) => (
-                  <th key={h.col} colSpan={h.colSpan} rowSpan={h.rowSpan} className={r < 2 ? 'group' : undefined}>
+                  <th key={h.col} colSpan={h.colSpan} rowSpan={h.rowSpan} className={(r < 2 ? 'group' : '') + gend(h.col + h.colSpan - 1)}>
                     {h.label}
                   </th>
                 ))}
@@ -197,7 +201,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                   <th className="sticky day">
                     <span className="dow">{dow}</span> {dd}
                   </th>
-                  {COLUMNS.map((col) => {
+                  {COLUMNS.map((col, i) => {
                     const k = keyOf({ date, ...col });
                     const cell = cells[k];
                     const pos = day.find((p) => p.slot === col.slot && p.idx === col.idx);
@@ -213,7 +217,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                       pos?.manualOnly && col.slot !== 'BAMBI' ? 'optional' : '',
                       cell?.source === 'manual' ? 'manual' : '',
                       ws.some((w) => w.level === 'error') ? 'err' : ws.length ? 'wrn' : '',
-                    ].join(' ');
+                    ].join(' ') + gend(bodyCol(i));
                     const title = [
                       !pos
                         ? mirror
@@ -281,7 +285,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                         </td>
                         {col.slot === 'PS_NOTTE' && (
                           <td
-                            className={`cell ruota-name ${ruotaCanCover(col.slot, date) ? (ruotaNames[date] ? 'ruota' : '') : 'unused'}`}
+                            className={`cell ruota-name ${ruotaCanCover(col.slot, date) ? (ruotaNames[date] ? 'ruota' : '') : 'unused'}${gend(NIGHT + 1)}`}
                             title={ruotaCanCover(col.slot, date) ? 'Ruota comune: scrivi il nome a mano' : 'La ruota comune copre solo le notti dal lunedì al venerdì'}
                           >
                             {ruotaCanCover(col.slot, date) && (

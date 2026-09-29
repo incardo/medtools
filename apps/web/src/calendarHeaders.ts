@@ -10,10 +10,10 @@ export const HEADERS: HeadNode[] = [
       { label: 'Notte', children: [{ label: 'Specializzando' }, { label: 'Ruota comune' }] },
     ],
   },
-  { label: 'OBI', children: [{ label: 'Mattina' }, { label: 'Pomeriggio' }] },
+  { label: 'OBI', children: [{ label: 'Mattina', children: [{ label: '' }] }, { label: 'Pomeriggio', children: [{ label: '' }] }] },
   {
     label: 'Ped Urg',
-    children: [{ label: 'Mattina', children: [{ label: 'IV' }, { label: 'III' }] }, { label: 'Pomeriggio' }],
+    children: [{ label: 'Mattina', children: [{ label: 'IV' }, { label: 'III' }] }, { label: 'Pomeriggio', children: [{ label: '' }] }],
   },
   { label: 'Bambi' },
   { label: 'Amb' },
@@ -42,3 +42,6 @@ export function headerRows(nodes: HeadNode[] = HEADERS): HeadCell[][] {
   walk(nodes, 0, 0);
   return rows;
 }
+
+/** Ultima colonna (contata da 0) di ogni reparto: lì va il bordo spesso. */
+export const GROUP_ENDS = new Set(headerRows()[0].map((h) => h.col + h.colSpan - 1));

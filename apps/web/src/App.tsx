@@ -31,8 +31,13 @@ export function App() {
     <div className="app">
       <header className="top">
         <div className="brand">
-          <strong>MedTools</strong>
-          <span>Turni specializzandi PS</span>
+          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#d92d20" d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z" />
+          </svg>
+          <div>
+            <strong>MedTools</strong>
+            <span>Turni specializzandi PS</span>
+          </div>
         </div>
         <nav className="tabs">
           {TABS.map(([id, label]) => (
