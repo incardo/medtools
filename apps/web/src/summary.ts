@@ -3,16 +3,15 @@ import { cellsToAssignments, type AppData } from './store';
 import type { HeadNode } from './calendarHeaders';
 
 /**
- * Colonne della panoramica (app ed Excel), per tipo di turno. In PS e OBI mattina e pomeriggio sono equivalenti:
- * si contano insieme, distinguendo solo alti e verdi. Un turno da 12h conta come due turni.
+ * Colonne della panoramica (app ed Excel), per tipo di turno. Mattina e pomeriggio sono equivalenti:
+ * si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due turni.
  */
 export const SUMMARY_TURNS: { key: string; slots: SlotCode[] }[] = [
   { key: 'PS_ALTI', slots: ['PS_ALTI_M', 'PS_ALTI_P'] },
   { key: 'PS_VERDI', slots: ['PS_VERDI_M', 'PS_VERDI_P'] },
   { key: 'PS_NOTTE', slots: ['PS_NOTTE'] },
   { key: 'OBI', slots: ['OBI_M', 'OBI_P'] },
-  { key: 'PEDU_M', slots: ['PEDU_M'] },
-  { key: 'PEDU_P', slots: ['PEDU_P'] },
+  { key: 'PEDU', slots: ['PEDU_M', 'PEDU_P'] },
   { key: 'BAMBI', slots: ['BAMBI'] },
   { key: 'AMB', slots: ['AMB'] },
 ];
@@ -24,7 +23,7 @@ export type SummaryExtra = (typeof SUMMARY_EXTRA)[number];
 export const SUMMARY_HEADERS: HeadNode[] = [
   { label: 'PS', children: [{ label: 'Alti' }, { label: 'Verdi' }, { label: 'Notte' }] },
   { label: 'OBI' },
-  { label: 'Ped Urg', children: [{ label: 'Mattina' }, { label: 'Pomeriggio' }] },
+  { label: 'Ped Urg' },
   { label: 'Bambi' },
   { label: 'Amb' },
   { label: 'Totale' },

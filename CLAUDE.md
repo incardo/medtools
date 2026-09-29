@@ -260,7 +260,9 @@ Risolti il 28/09/2026 (terzo giro): posti PS feriali senza anno (ora c'è lo sch
 
 Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h verdi, scambio la domenica), OBI di fine ottobre solo al IV anno.
 
-Aperti: nessuno. Restano le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
+Aperti:
+
+- **Notti del V anno** **[dubbio]** (29/09/2026): "5 notti nel mese" vale **per persona** (oggi nel motore: tetto mensile per ogni V anno, parametro "Notti del V anno per persona") o **in totale per il gruppo** (il resto delle notti lun–ven alla ruota comune; resta da decidere chi copre le domeniche)? Con 10 V anno il tetto per persona non scatta mai (~22 notti da coprire, capienza 50). Restano le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
 
 ---
 
@@ -353,7 +355,7 @@ medtools/
   - festivi infrasettimanali non gestiti.
 - Export Excel (`apps/web/src/exportExcel.ts`, libreria ExcelJS caricata solo al clic): foglio "Turni" formattato per la stampa (A4 orizzontale, colori per anno, legenda) e foglio "Riepilogo" con i turni per persona.
 - Calendario: le celle vuote hanno già il colore dell'anno previsto dalla regola; quando si assegna una persona prendono il colore del suo anno.
-- Panoramica (e foglio "Riepilogo" dell'Excel): colonne per tipo di turno; in PS mattina e pomeriggio sono **equivalenti** e si contano insieme (restano separati alti, verdi e notte) **[detto]**; OBI in un'unica colonna (mattina + pomeriggio) **[detto]**; Ped Urg per fascia; più Totale (senza Bambi), Weekend (giorni di sab/dom lavorati) e Assenze. Un turno da 12h conta come **due turni**. **[detto]** Interruttore Mese / Anno fino al mese scelto; righe raggruppate per anno di corso con la media; celle colorate se lo scarto dalla media del proprio anno è di almeno 1 turno; "·" per i turni non previsti per quell'anno. Colonne e conteggi in `apps/web/src/summary.ts`.
+- Panoramica (e foglio "Riepilogo" dell'Excel): colonne per tipo di turno; in PS mattina e pomeriggio sono **equivalenti** e si contano insieme (restano separati alti, verdi e notte) **[detto]**; OBI e Ped Urg in un'unica colonna ciascuno (mattina + pomeriggio) **[detto]**; più Totale (senza Bambi), Weekend (giorni di sab/dom lavorati) e Assenze. Un turno da 12h conta come **due turni**. **[detto]** Interruttore Mese / Anno fino al mese scelto; righe raggruppate per anno di corso con la media; celle colorate se lo scarto dalla media del proprio anno è di almeno 1 turno; "·" per i turni non previsti per quell'anno. Colonne e conteggi in `apps/web/src/summary.ts`.
 
 ---
 

@@ -75,7 +75,7 @@ export function OverviewView({ data, month }: ViewProps) {
         </div>
       </div>
       <p className="hint">
-        Turni per tipo; in PS e OBI mattina e pomeriggio si contano insieme (in PS alti e verdi restano separati). Un turno da 12h conta come due. <b>Weekend</b> = giorni di sabato o domenica
+        Turni per tipo; mattina e pomeriggio si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due. <b>Weekend</b> = giorni di sabato o domenica
         lavorati. Il totale esclude Bambi; la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
       <div className="legend">
