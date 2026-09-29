@@ -18,7 +18,31 @@ export type Family = 'PS_ALTI' | 'PS_VERDI' | 'PS_NOTTE' | 'OBI' | 'PEDU' | 'AMB
 
 export type Fascia = 'M' | 'P' | 'N';
 
-export type AbsenceKind = 'X' | 'F' | 'noM' | 'noP';
+export type AbsenceKind = 'X' | 'F' | 'noM' | 'noP' | 'noN' | 'soloM' | 'soloP' | 'soloN';
+
+/** Fasce escluse da ogni tipo di indisponibilità. */
+export const ABSENCE_BLOCKS: Record<AbsenceKind, Fascia[]> = {
+  X: ['M', 'P', 'N'],
+  F: ['M', 'P', 'N'],
+  noM: ['M'],
+  noP: ['P'],
+  noN: ['N'],
+  soloM: ['P', 'N'],
+  soloP: ['M', 'N'],
+  soloN: ['M', 'P'],
+};
+
+/** Etichetta breve (griglia) e descrizione (menu, avvisi) di ogni tipo. */
+export const ABSENCE_INFO: Record<AbsenceKind, { short: string; label: string }> = {
+  X: { short: 'X', label: 'indisponibile' },
+  F: { short: 'F', label: 'ferie' },
+  noM: { short: 'no M', label: 'no mattina' },
+  noP: { short: 'no P', label: 'no pomeriggio' },
+  noN: { short: 'no N', label: 'no notte' },
+  soloM: { short: 'solo M', label: 'solo mattina' },
+  soloP: { short: 'solo P', label: 'solo pomeriggio' },
+  soloN: { short: 'solo N', label: 'solo notte' },
+};
 
 /** Etichetta generica: persone a caso, non in anagrafica. */
 export const RUOTA = 'RUOTA_COMUNE';

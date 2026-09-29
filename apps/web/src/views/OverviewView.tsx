@@ -59,7 +59,7 @@ export function OverviewView({ data, month }: ViewProps) {
               <th>Totale</th>
               <th>Ferie</th>
               <th>Indisp.</th>
-              <th>no M / no P</th>
+              <th>Parziali</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +80,9 @@ export function OverviewView({ data, month }: ViewProps) {
                   </td>
                   <td className="num">{abs.filter((k) => k === 'F').length}</td>
                   <td className="num">{abs.filter((k) => k === 'X').length}</td>
-                  <td className="num">{abs.filter((k) => k === 'noM' || k === 'noP').length}</td>
+                  <td className="num" title="Giorni con no M/P/N o solo M/P/N">
+                    {abs.filter((k) => k && k !== 'F' && k !== 'X').length}
+                  </td>
                 </tr>
               );
             })}

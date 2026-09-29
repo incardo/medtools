@@ -183,7 +183,9 @@ Ogni specializzando, di qualsiasi anno, inserisce le proprie indisponibilità. *
 
 Notazione: **`no M`** = non disponibile la mattina, **`no P`** = non disponibile il pomeriggio, **`X`** = indisponibilità, **`F`** = ferie. **[detto]**
 
-Modello suggerito: un'indisponibilità ha `tipo` (`X`, `F`, `noM`, `noP`) e copre una o più fasce (`mattina`, `pomeriggio`, `notte`).
+Aggiunti il 29/09/2026: **`no N`** = non disponibile la notte; **`solo M`**, **`solo P`**, **`solo N`** = disponibile solo in quella fascia. **[detto]**
+
+Un valore per persona e giorno (`AbsenceKind`); le fasce escluse da ogni tipo sono in `ABSENCE_BLOCKS` (`packages/engine/src/types.ts`). Nella scheda Disponibilità si sceglie da un menu che si apre cliccando la cella.
 
 I dati di assenza del vecchio file Excel **non si considerano**. **[detto]**
 

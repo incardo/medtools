@@ -1,5 +1,5 @@
 import { SLOT_INFO } from './rules';
-import type { Absence, AbsenceKind, AcademicYear, Enrollment, ExamDay, Fascia, Person, SlotCode, Year } from './types';
+import { ABSENCE_BLOCKS, ABSENCE_INFO, type Absence, type AbsenceKind, AcademicYear, Enrollment, ExamDay, Fascia, Person, SlotCode, Year } from './types';
 import { academicYearOf } from './dates';
 
 /** Chi c'è, in che anno di corso, e quando è disponibile. */
@@ -61,9 +61,7 @@ export class Roster {
   /** Indisponibile in quella fascia per assenza o esame. */
   unavailable(personId: string, date: string, fascia: Fascia): string | null {
     const kind = this.absenceOf(personId, date);
-    if (kind === 'X' || kind === 'F') return kind === 'F' ? 'ferie' : 'indisponibile';
-    if (kind === 'noM' && fascia === 'M') return 'no mattina';
-    if (kind === 'noP' && fascia === 'P') return 'no pomeriggio';
+    if (kind && ABSENCE_BLOCKS[kind].includes(fascia)) return ABSENCE_INFO[kind].label;
     const year = this.yearOf(personId, date);
     for (const ex of this.exams) {
       if (ex.date !== date || !year || !ex.years.includes(year)) continue;

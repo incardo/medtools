@@ -6,6 +6,7 @@ import {
   buildDemand,
   daysOfMonth,
   keyOf,
+  makeRoster,
   monthsOfAcademicYear,
   suggestMonth,
   validate,
@@ -258,6 +259,32 @@ describe('motore', () => {
     const onDay = r.assignments.filter((a) => a.date === '2026-11-02');
     expect(onDay.some((a) => a.who === 'kilo')).toBe(false);
     expect(onDay.some((a) => a.who === 'lima' && a.slot.endsWith('_M'))).toBe(false);
+  });
+
+  it('rispetta no notte e le disponibilità a una sola fascia', () => {
+    const inp = exampleInput({
+      absences: [
+        { personId: 'alfa', date: '2026-11-03', kind: 'noN' },
+        { personId: 'bravo', date: '2026-11-03', kind: 'soloM' },
+        { personId: 'charlie', date: '2026-11-03', kind: 'soloP' },
+        { personId: 'delta', date: '2026-11-03', kind: 'soloN' },
+      ],
+    });
+    const roster = makeRoster(inp);
+    expect(roster.unavailable('alfa', '2026-11-03', 'N')).toBe('no notte');
+    expect(roster.unavailable('alfa', '2026-11-03', 'M')).toBeNull();
+    expect(roster.unavailable('bravo', '2026-11-03', 'M')).toBeNull();
+    expect(roster.unavailable('bravo', '2026-11-03', 'P')).toBe('solo mattina');
+    expect(roster.unavailable('charlie', '2026-11-03', 'M')).toBe('solo pomeriggio');
+    expect(roster.unavailable('delta', '2026-11-03', 'P')).toBe('solo notte');
+    expect(roster.unavailable('delta', '2026-11-03', 'N')).toBeNull();
+
+    const onDay = suggestMonth(inp).assignments.filter((a) => a.date === '2026-11-03');
+    const fascia = (s: string) => (s === 'PS_NOTTE' ? 'N' : s.endsWith('_P') ? 'P' : 'M');
+    expect(onDay.some((a) => a.who === 'alfa' && fascia(a.slot) === 'N')).toBe(false);
+    expect(onDay.some((a) => a.who === 'bravo' && fascia(a.slot) !== 'M')).toBe(false);
+    expect(onDay.some((a) => a.who === 'charlie' && fascia(a.slot) !== 'P')).toBe(false);
+    expect(onDay.some((a) => a.who === 'delta' && fascia(a.slot) !== 'N')).toBe(false);
   });
 
   it('non tocca le assegnazioni manuali', () => {
