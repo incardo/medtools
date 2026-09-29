@@ -8,13 +8,14 @@ import { PeopleView } from './views/PeopleView';
 import { OverviewView } from './views/OverviewView';
 import { ParamsView } from './views/ParamsView';
 import { monthLabel } from './format';
+import { AvailabilityIcon, CalendarIcon, OverviewIcon, ParamsIcon, PeopleIcon } from './icons';
 
 const TABS = [
-  ['calendario', 'Calendario'],
-  ['disponibilita', 'Disponibilità'],
-  ['persone', 'Persone'],
-  ['panoramica', 'Panoramica'],
-  ['parametri', 'Parametri'],
+  ['calendario', 'Calendario', CalendarIcon],
+  ['disponibilita', 'Disponibilità', AvailabilityIcon],
+  ['persone', 'Persone', PeopleIcon],
+  ['panoramica', 'Panoramica', OverviewIcon],
+  ['parametri', 'Parametri', ParamsIcon],
 ] as const;
 
 type Tab = (typeof TABS)[number][0];
@@ -40,8 +41,9 @@ export function App() {
           </div>
         </div>
         <nav className="tabs">
-          {TABS.map(([id, label]) => (
+          {TABS.map(([id, label, TabIcon]) => (
             <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+              <TabIcon />
               {label}
             </button>
           ))}

@@ -117,12 +117,22 @@ select {
   flex: 1;
 }
 .tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-color: transparent;
+}
+.tabs button .icon {
+  flex: none;
+  color: var(--muted);
 }
 .tabs button.active {
   background: var(--bg);
   border-color: var(--border);
   font-weight: 600;
+}
+.tabs button.active .icon {
+  color: var(--accent);
 }
 .month {
   font-weight: 600;
