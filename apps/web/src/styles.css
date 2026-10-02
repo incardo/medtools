@@ -802,3 +802,68 @@ td.strong {
   background: #f6b3bd;
   color: #7a0f1d;
 }
+
+/* Calendario: "I miei turni" */
+.mine-panel {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.mine-panel > summary {
+  cursor: pointer;
+}
+.mine-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 8px 0;
+}
+.mine-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.mine-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 3 220px;
+  column-gap: 20px;
+  font-size: 13px;
+}
+.mine-list li {
+  break-inside: avoid;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.mine-list li.weekend {
+  background: var(--weekend);
+}
+.mine-day {
+  display: inline-block;
+  min-width: 52px;
+  font-weight: 600;
+}
+.mine-abs {
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+.chip.mine {
+  border: 2px solid var(--accent);
+}
+.cal td.mine {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.cal td.mine select {
+  font-weight: 700;
+}
+.cal tr.mine-row > th.day {
+  color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}

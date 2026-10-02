@@ -24,6 +24,7 @@ import { YEAR_LABEL, cellsToAssignments, engineInput, type Cell } from '../store
 import { dayLabel, monthLabel, type ViewProps } from '../format';
 import { exportExcel } from '../exportExcel';
 import { GROUP_ENDS, HEADER_DEPTH, headerRows } from '../calendarHeaders';
+import { MyShifts, loadMe, saveMe } from './MyShifts';
 
 const HEAD_ROWS = headerRows();
 const gend = (col: number) => (GROUP_ENDS.has(col) ? ' gend' : '');
@@ -34,12 +35,19 @@ const norm = (s: string) =>
 
 export function CalendarView({ data, setData, month }: ViewProps) {
   const [busy, setBusy] = useState(false);
+  const [me, setMeState] = useState(loadMe);
+  const setMe = (id: string) => {
+    setMeState(id);
+    saveMe(id);
+  };
   const input = useMemo(() => engineInput(data, month), [data, month]);
   const roster = useMemo(() => makeRoster(input), [input]);
   const demand = useMemo(() => demandForMonth(input, roster), [input, roster]);
   const cells = data.assignments[month] ?? {};
   const assignments = useMemo(() => cellsToAssignments(cells), [cells]);
   const warnings = useMemo(() => validate(input, assignments), [input, assignments]);
+  /** Giorni in cui la persona scelta con "Io sono" ha un turno: riga evidenziata. */
+  const myDays = useMemo(() => new Set(me ? assignments.filter((a) => a.who === me).map((a) => a.date) : []), [assignments, me]);
   const names = useMemo(() => new Map(data.people.map((p) => [p.id, p.name])), [data.people]);
 
   const warnByKey = useMemo(() => {
@@ -183,6 +191,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         <span className={softs ? 'warn' : ''}>{softs} avvisi</span>
       </div>
 
+      <MyShifts data={data} month={month} roster={roster} assignments={assignments} me={me} setMe={setMe} />
+
       <div className="legend">
         <span className="chip y5">V anno</span>
         <span className="chip y4">IV anno</span>
@@ -192,6 +202,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         <span className="chip manual">✎ manuale</span>
         <span className="chip err">errore</span>
         <span className="chip wrn">scoperto / avviso</span>
+        {me && <span className="chip mine">i miei turni</span>}
       </div>
 
       <div className="table-wrap">
@@ -223,7 +234,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
               const { dow, day: dd } = dayLabel(date);
               const active = roster.activeOn(date);
               return (
-                <tr key={date} className={isWeekend(date) ? 'weekend' : ''}>
+                <tr key={date} className={(isWeekend(date) ? 'weekend' : '') + (myDays.has(date) ? ' mine-row' : '')}>
                   <th className="sticky day">
                     <span className="dow">{dow}</span> {dd}
                   </th>
@@ -246,6 +257,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                       pos?.manualOnly && col.slot !== 'BAMBI' ? 'optional' : '',
                       cell?.source === 'manual' ? 'manual' : '',
                       ws.some((w) => w.level === 'error') ? 'err' : ws.length ? 'wrn' : '',
+                      me && cell?.who === me ? 'mine' : '',
                     ].join(' ') + gend(i);
                     const title = [
                       !pos
