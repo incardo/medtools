@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { ABSENCE_INFO, SLOT_INFO, addDays, daysOfMonth, isWeekend, type Assignment, type Roster, type SlotCode } from '@medtools/engine';
 import { YEAR_LABEL, type AppData } from '../store';
 import { dayLabel, monthLabel } from '../format';
@@ -124,6 +124,23 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
   }, [assignments, me]);
   const summary = useMemo(() => (me ? summarize(data, [month])[me] : undefined), [data, month, me]);
   const absences = useMemo(() => (me ? absenceRanges(data, me, month) : []), [data, me, month]);
+  const [copied, setCopied] = useState(false);
+
+  /** Sequenza dei turni come testo, da incollare in un messaggio. */
+  const copyText = () =>
+    `Turni di ${person?.name} – ${monthLabel(month)}\n` + days.map(([d, shifts]) => `${fmt(d)} ${shifts.join(' + ')}`).join(' → ');
+  const copy = async () => {
+    const text = copyText();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // senza accesso agli appunti (es. pagina non sicura): si copia a mano
+      prompt('Copia il testo:', text);
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
     <details className="mine-panel" open>
@@ -178,13 +195,19 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
             </span>
           </div>
           {days.length ? (
-            <ul className="mine-list">
-              {days.map(([d, shifts]) => (
-                <li key={d} className={isWeekend(d) ? 'weekend' : ''}>
-                  <span className="mine-day">{fmt(d)}</span> {shifts.join(' + ')}
-                </li>
+            <div className="mine-seq">
+              {days.map(([d, shifts], i) => (
+                <Fragment key={d}>
+                  {i > 0 && <span className="mine-arrow">→</span>}
+                  <span className={`mine-step${isWeekend(d) ? ' weekend' : ''}`}>
+                    <span className="mine-day">{fmt(d)}</span> {shifts.join(' + ')}
+                  </span>
+                </Fragment>
               ))}
-            </ul>
+              <button className="mine-copy" onClick={copy} title="Copia la sequenza come testo, da incollare in un messaggio">
+                {copied ? 'Copiato ✓' : 'Copia'}
+              </button>
+            </div>
           ) : (
             <p className="hint">Nessun turno assegnato a {person.name} in {monthLabel(month)}.</p>
           )}

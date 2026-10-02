@@ -828,25 +828,32 @@ td.strong {
   font-size: 13px;
   margin-bottom: 6px;
 }
-.mine-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  columns: 3 220px;
-  column-gap: 20px;
+.mine-seq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 4px;
   font-size: 13px;
 }
-.mine-list li {
-  break-inside: avoid;
-  padding: 1px 4px;
-  border-radius: 4px;
+.mine-step {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  white-space: nowrap;
 }
-.mine-list li.weekend {
+.mine-step.weekend {
   background: var(--weekend);
 }
+.mine-arrow {
+  color: var(--muted);
+}
+.mine-copy {
+  margin-left: 8px;
+  padding: 1px 10px;
+  font-size: 12px;
+}
 .mine-day {
-  display: inline-block;
-  min-width: 52px;
   font-weight: 600;
 }
 .mine-abs {
