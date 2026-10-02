@@ -1,4 +1,4 @@
-import { daysOfMonth, isWeekend, RUOTA, type Position, type SlotCode, type Year } from '@medtools/engine';
+import { daysOfMonth, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
 import { cellsToAssignments, type AppData } from './store';
 import type { HeadNode } from './calendarHeaders';
 
@@ -46,14 +46,14 @@ export interface PersonSummary {
 /** Turni che non entrano nel totale né nel bilanciamento. */
 const OUTSIDE_TOTAL: SlotCode[] = ['BAMBI', 'PS_OPZ_M', 'PS_OPZ_P'];
 
-/** Conteggi per persona su uno o più mesi. La ruota comune non è conteggiata. */
+/** Conteggi per persona su uno o più mesi. La ruota comune e i nomi esterni non sono conteggiati. */
 export function summarize(data: AppData, months: string[]): Record<string, PersonSummary> {
   const out: Record<string, PersonSummary> = {};
   const get = (id: string) => (out[id] ??= { slots: {}, total: 0, weekend: 0, ferie: 0, indisp: 0, parziali: 0 });
   const weekendDays = new Map<string, Set<string>>();
   for (const m of months) {
     for (const a of cellsToAssignments(data.assignments[m])) {
-      if (a.who === RUOTA) continue;
+      if (!isPerson(a.who)) continue;
       const s = get(a.who);
       s.slots[a.slot] = (s.slots[a.slot] ?? 0) + 1;
       if (!OUTSIDE_TOTAL.includes(a.slot)) s.total++;

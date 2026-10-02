@@ -1,5 +1,5 @@
 import type { Borders, Cell as XCell, Fill, Worksheet } from 'exceljs';
-import { COLUMNS, RUOTA, daysOfMonth, isWeekend, keyOf, type Position, type Roster, type Year } from '@medtools/engine';
+import { COLUMNS, EXTERNAL, RUOTA, daysOfMonth, isWeekend, keyOf, type Position, type Roster, type Year } from '@medtools/engine';
 import { YEAR_LABEL, type AppData, type Cell } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
 import { groupEnds, headerRows, type HeadCell } from './calendarHeaders';
@@ -124,6 +124,8 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
       if (who === RUOTA) {
         text = (secondNight && ruotaNames[date]) || 'Ruota comune';
         bg = COLOR.ruota;
+      } else if (who?.startsWith(EXTERNAL)) {
+        text = who.slice(EXTERNAL.length);
       } else if (who) {
         text = names.get(who) ?? '?';
         const y = roster.yearOf(who, date);

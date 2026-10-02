@@ -50,6 +50,12 @@ export const ABSENCE_INFO: Record<AbsenceKind, { short: string; label: string }>
 /** Etichetta generica: persone a caso, non in anagrafica. */
 export const RUOTA = 'RUOTA_COMUNE';
 
+/** Prefisso di un nome scritto a mano che non è in anagrafica (es. un esterno): si mostra ma non si conta. */
+export const EXTERNAL = 'EXT:';
+
+/** Persona dell'anagrafica (non la ruota comune né un nome esterno): solo queste si contano e si controllano. */
+export const isPerson = (who: string | undefined): who is string => !!who && who !== RUOTA && !who.startsWith(EXTERNAL);
+
 export interface Person {
   id: string;
   name: string;

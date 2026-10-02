@@ -1,11 +1,13 @@
 import { Fragment, useMemo, useState } from 'react';
 import {
   COLUMNS,
+  EXTERNAL,
   RUOTA,
   SLOT_INFO,
   addDays,
   daysOfMonth,
   demandForMonth,
+  isPerson,
   isWeekend,
   keyOf,
   makeRoster,
@@ -25,6 +27,10 @@ import { GROUP_ENDS, HEADER_DEPTH, headerRows } from '../calendarHeaders';
 
 const HEAD_ROWS = headerRows();
 const gend = (col: number) => (GROUP_ENDS.has(col) ? ' gend' : '');
+/** Voce del menu per scrivere un nome a mano. */
+const OTHER = '__altro__';
+const norm = (s: string) =>
+  s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 export function CalendarView({ data, setData, month }: ViewProps) {
   const [busy, setBusy] = useState(false);
@@ -50,7 +56,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
   const freeByDay = useMemo(() => {
     const busy = new Map<string, Set<string>>();
     for (const a of [...(input.previous ?? []), ...assignments]) {
-      if (a.who === RUOTA) continue;
+      if (!isPerson(a.who)) continue;
       busy.set(a.date, (busy.get(a.date) ?? new Set()).add(a.who));
       if (a.slot === 'PS_NOTTE') busy.set(addDays(a.date, 1), (busy.get(addDays(a.date, 1)) ?? new Set()).add(a.who));
     }
@@ -91,6 +97,24 @@ export function CalendarView({ data, setData, month }: ViewProps) {
       else delete next[date];
       return { ...d, ruotaNames: next };
     });
+
+  /**
+   * Nome scritto a mano: se corrisponde a una persona dell'anagrafica diventa quella persona (e si conta),
+   * altrimenti resta un nome esterno (si mostra e si esporta, ma non si conta).
+   */
+  const askName = (current?: string): string | null => {
+    const typed = prompt(
+      'Nome di chi copre il turno.\nSe è nella scheda Persone il turno si conta in Panoramica e nel bilanciamento; altrimenti resta solo il nome.',
+      current?.startsWith(EXTERNAL) ? current.slice(EXTERNAL.length) : '',
+    )?.trim();
+    if (!typed) return null;
+    const t = norm(typed);
+    const exact = data.people.find((p) => norm(p.name) === t);
+    if (exact) return exact.id;
+    const partial = t.length >= 3 ? data.people.filter((p) => norm(p.name).includes(t)) : [];
+    if (partial.length === 1 && confirm(`"${typed}": intendi ${partial[0].name} (scheda Persone)?`)) return partial[0].id;
+    return EXTERNAL + typed;
+  };
 
   const generate = () => {
     const suggested = Object.values(cells).filter((v) => v.source === 'suggested').length;
@@ -156,7 +180,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         <span>{manual} manuali</span>
         <span className={errors ? 'bad' : ''}>{errors} errori</span>
         <span className={holes ? 'warn' : ''}>{holes} posti scoperti</span>
-        <span className={softs ? 'warn' : ''}>{softs} smonti weekend saltati</span>
+        <span className={softs ? 'warn' : ''}>{softs} avvisi</span>
       </div>
 
       <div className="legend">
@@ -253,7 +277,9 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                           <select
                             value={cell?.who ?? ''}
                             onChange={(e) => {
-                              if (secondNight && e.target.value !== RUOTA && ruotaNames[date]) setRuotaName(date, '');
+                              const value = e.target.value === OTHER ? askName(cell?.who) : e.target.value;
+                              if (value === null) return;
+                              if (secondNight && value !== RUOTA && ruotaNames[date]) setRuotaName(date, '');
                               setCells((c) => {
                                 // Turno da 12h: la scelta vale per tutte le fasce dello stesso posto.
                                 const main = pos ?? mirror;
@@ -261,7 +287,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                                   ? [main.slot, ...main.alsoSlots].map((slot) => keyOf({ date, slot, idx: main.idx }))
                                   : [k];
                                 for (const key of keys) {
-                                  if (e.target.value) c[key] = { who: e.target.value, source: 'manual' };
+                                  if (value) c[key] = { who: value, source: 'manual' };
                                   else delete c[key];
                                 }
                                 return c;
@@ -271,7 +297,11 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                             <option value="">—</option>
                             {!listed && (
                               <option value={cell!.who}>
-                                {cell!.who === RUOTA ? 'Ruota comune' : (names.get(cell!.who) ?? '?')} (fuori regola)
+                                {cell!.who === RUOTA
+                                  ? 'Ruota comune (fuori regola)'
+                                  : cell!.who.startsWith(EXTERNAL)
+                                    ? `${cell!.who.slice(EXTERNAL.length)} (non in anagrafica)`
+                                    : `${names.get(cell!.who) ?? '?'} (fuori regola)`}
                               </option>
                             )}
                             {ruotaCanCover(col.slot, date) && <option value={RUOTA}>Ruota comune</option>}
@@ -294,6 +324,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                                 </optgroup>
                               );
                             })}
+                            <option value={OTHER}>✎ Altro nome…</option>
                           </select>
                           {secondNight && cell?.who === RUOTA && (
                             <input

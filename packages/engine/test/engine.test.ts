@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EXTERNAL,
   RUOTA,
   academicYearOf,
   addDays,
@@ -400,6 +401,17 @@ describe('motore', () => {
     const msgs = ws.filter((w) => w.level === 'error').map((w) => w.message);
     expect(msgs).toContain('Non disponibile (indisponibile)');
     expect(msgs).toContain('Più turni nello stesso giorno');
-    expect(msgs.some((m) => m.includes('III anno non può'))).toBe(true);
+    // III anno in OBI scelto a mano (sostituzione): avviso, non errore.
+    const iii = ws.find((w) => w.personId === 'sierra' && w.message.includes('III anno di norma non copre'));
+    expect(iii?.level).toBe('warn');
+  });
+
+  it('i nomi esterni scritti a mano si mostrano ma non si contano', () => {
+    const ext: Assignment = { date: '2026-11-04', slot: 'PS_ALTI_M', idx: 0, who: `${EXTERNAL}Rossi`, source: 'manual' };
+    expect(countAssignments([ext])).toEqual({});
+    expect(countExtras([ext])).toEqual({});
+    expect(validate(exampleInput(), [ext]).filter((w) => w.personId === ext.who)).toEqual([]);
+    const r = suggestMonth(exampleInput({ locked: [ext] }));
+    expect(r.assignments.some((a) => keyOf(a) === keyOf(ext))).toBe(false);
   });
 });

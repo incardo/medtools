@@ -203,6 +203,10 @@ export function RulesView({ data, month }: ViewProps) {
           I turni scritti a mano non vengono mai toccati dal motore e <b>contano nel bilanciamento</b> (tranne Bambi e alti opzionali). Il
           motore ne tiene conto anche per le regole sopra: per esempio chi è inserito a mano di notte ha lo smonto il giorno dopo.
         </li>
+        <li>
+          In ogni cella si può mettere a mano chiunque, anche di un altro anno (sostituzioni), oppure scrivere un nome con "Altro nome…".
+          Se il nome è nella scheda Persone il turno conta come gli altri; altrimenti resta solo il nome, senza conteggi né controlli.
+        </li>
       </ul>
 
       <h3>Indisponibilità</h3>

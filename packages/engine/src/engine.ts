@@ -2,7 +2,7 @@ import { addDays, daysOfMonth, isWeekend, weekday } from './dates';
 import { Roster } from './roster';
 import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rules';
 import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
-import { RUOTA } from './types';
+import { RUOTA, isPerson } from './types';
 
 const BALANCED: Family[] = ['PS_ALTI', 'PS_VERDI', 'PS_NOTTE', 'OBI', 'PEDU', 'AMB'];
 
@@ -23,7 +23,7 @@ class Board {
   private byDay = new Map<string, Map<string, SlotCode[]>>();
 
   add(a: Assignment) {
-    if (a.who === RUOTA || !a.who) return;
+    if (!isPerson(a.who)) return;
     let day = this.byDay.get(a.date);
     if (!day) this.byDay.set(a.date, (day = new Map()));
     day.set(a.who, [...(day.get(a.who) ?? []), a.slot]);
@@ -68,7 +68,7 @@ function mulberry32(seed: number) {
 export function countAssignments(assignments: Assignment[]): History {
   const h: History = {};
   for (const a of assignments) {
-    if (!a.who || a.who === RUOTA) continue;
+    if (!isPerson(a.who)) continue;
     const fam = SLOT_INFO[a.slot].family;
     const row = (h[a.who] ??= {});
     row[fam] = (row[fam] ?? 0) + 1;
@@ -84,7 +84,7 @@ export function countExtras(assignments: Assignment[]): ExtraHistory {
   const days = new Map<string, Set<string>>();
   const out: ExtraHistory = {};
   for (const a of assignments) {
-    if (!a.who || a.who === RUOTA) continue;
+    if (!isPerson(a.who)) continue;
     const row = (out[a.who] ??= { weekend: 0, blocks: 0 });
     if (isBlockStart(a)) row.blocks++;
     if (isWeekend(a.date)) days.set(a.who, (days.get(a.who) ?? new Set()).add(a.date));
@@ -154,7 +154,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     if (isWeekend(date)) weekendDays.set(p, (weekendDays.get(p) ?? new Set()).add(date));
     if (isBlockStart({ date, slot })) monthBlocks[p] = (monthBlocks[p] ?? 0) + 1;
   };
-  for (const a of input.locked) if (a.who && a.who !== RUOTA) bump(a.who, a.slot, a.date);
+  for (const a of input.locked) if (isPerson(a.who)) bump(a.who, a.slot, a.date);
 
   const canTake = (p: string, pos: Position): boolean => {
     const year = roster.yearOf(p, pos.date);
@@ -325,12 +325,16 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
       if (!ruotaCanCover(a.slot, a.date)) w('error', 'La ruota comune copre solo le notti dal lunedì al venerdì');
       continue;
     }
+    // Nome esterno scritto a mano: nessun controllo, non è in anagrafica.
+    if (!isPerson(a.who)) continue;
     const year = roster.yearOf(a.who, a.date);
     if (!year) {
       w('error', 'Persona non attiva in questa data');
       continue;
     }
-    if (!yearCanCover(year, a.slot)) w('error', `Il ${['', '', '', 'III', 'IV', 'V'][year]} anno non può coprire questo turno`);
+    // Scelto a mano (es. una sostituzione): si segnala ma non è un errore.
+    if (!yearCanCover(year, a.slot))
+      w(a.source === 'manual' ? 'warn' : 'error', `Il ${['', '', '', 'III', 'IV', 'V'][year]} anno di norma non copre questo turno`);
     const why = roster.unavailable(a.who, a.date, SLOT_INFO[a.slot].fascia);
     if (why) w('error', `Non disponibile (${why})`);
     const same = board.slots(a.who, a.date);
