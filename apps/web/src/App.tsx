@@ -23,7 +23,7 @@ const TABS = [
 type Tab = (typeof TABS)[number][0];
 
 export function App() {
-  const { data, setData, status, empty, login, logout } = useSharedData();
+  const { data, setData, status, empty, login, logout, refresh } = useSharedData();
   const [tab, setTab] = useState<Tab>('calendario');
   const [month, setMonth] = useState('2026-11');
   const months = data.academicYears.flatMap((a) => monthsOfAcademicYear(a.id));
@@ -82,7 +82,7 @@ export function App() {
           {tab === 'persone' && <PeopleView {...props} />}
           {tab === 'panoramica' && <OverviewView {...props} />}
           {tab === 'regole' && <RulesView {...props} />}
-          {tab === 'parametri' && <ParamsView {...props} />}
+          {tab === 'parametri' && <ParamsView {...props} onRestored={refresh} />}
         </main>
       )}
     </div>

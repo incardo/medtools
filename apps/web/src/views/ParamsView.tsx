@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { ExamDay, MonthParams, Year } from '@medtools/engine';
 import { YEAR_LABEL, academicYearFor, paramsFor } from '../store';
 import { monthLabel, shortDate, type ViewProps } from '../format';
+import { HistoryPanel } from './HistoryPanel';
 
-export function ParamsView({ data, setData, month }: ViewProps) {
+export function ParamsView({ data, setData, month, onRestored }: ViewProps & { onRestored: () => Promise<void> }) {
   const ay = academicYearFor(data, month);
   const params = paramsFor(data, month);
   const [exam, setExam] = useState<ExamDay>({ date: `${month}-01`, years: [5], nightOnly: false });
@@ -84,6 +85,8 @@ export function ParamsView({ data, setData, month }: ViewProps) {
         </button>
       </div>
       <p className="hint">Esempio: esame del V anno il 5 → "tutto il giorno" il 5 e "solo la notte" il 4.</p>
+
+      <HistoryPanel onRestored={onRestored} />
     </section>
   );
 }

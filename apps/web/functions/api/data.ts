@@ -3,6 +3,7 @@
  *
  * GET  /api/data?since=<ms>  → record modificati dopo `since` (anche i cancellati, con v = null) e `now`.
  * POST /api/data  { ops: [{ k, v }] }  → scrive i record (v = null cancella). Ultima scrittura vince, record per record.
+ * Ogni scrittura finisce anche nella cronologia (kv_log), da cui si ripristina una versione precedente (vedi history.ts).
  */
 import type { Env } from './_env';
 
@@ -35,10 +36,16 @@ export async function onRequestPost({ request, env }: Ctx) {
     if (op.v !== null && (typeof op.v !== 'string' || op.v.length > MAX_VALUE)) return json({ error: 'bad-value' }, 400);
   }
   const now = Date.now();
-  const stmt = env.DB.prepare('INSERT INTO kv (k, v, t, by) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (k) DO UPDATE SET v = excluded.v, t = excluded.t, by = excluded.by');
-  // D1 limita le istruzioni per batch: a blocchi.
-  for (let i = 0; i < ops.length; i += 100) {
-    await env.DB.batch(ops.slice(i, i + 100).map((op) => stmt.bind(op.k, op.v as string | null, now, null)));
-  }
+  await writeOps(env, ops as { k: string; v: string | null }[], now);
   return json({ now });
+}
+
+/** Scrive i record in kv e nella cronologia, a blocchi (D1 limita le istruzioni per batch). */
+export async function writeOps(env: Env, ops: { k: string; v: string | null }[], now: number, note: string | null = null) {
+  const put = env.DB.prepare('INSERT INTO kv (k, v, t, by) VALUES (?1, ?2, ?3, NULL) ON CONFLICT (k) DO UPDATE SET v = excluded.v, t = excluded.t, by = excluded.by');
+  const log = env.DB.prepare('INSERT INTO kv_log (k, v, t, note) VALUES (?1, ?2, ?3, ?4)');
+  for (let i = 0; i < ops.length; i += 50) {
+    const chunk = ops.slice(i, i + 50);
+    await env.DB.batch(chunk.flatMap((op) => [put.bind(op.k, op.v, now), log.bind(op.k, op.v, now, note)]));
+  }
 }

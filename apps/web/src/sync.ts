@@ -197,5 +197,11 @@ export function useSharedData() {
     location.reload();
   }, []);
 
-  return { data, setData, status, empty, login, logout };
+  /** Salva le modifiche in sospeso e scarica subito quelle del server (es. dopo un ripristino). */
+  const refresh = useCallback(async () => {
+    await flush();
+    await pull();
+  }, [pull, flush]);
+
+  return { data, setData, status, empty, login, logout, refresh };
 }

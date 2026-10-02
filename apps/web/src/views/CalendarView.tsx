@@ -93,6 +93,11 @@ export function CalendarView({ data, setData, month }: ViewProps) {
     });
 
   const generate = () => {
+    const suggested = Object.values(cells).filter((v) => v.source === 'suggested').length;
+    const msg = suggested
+      ? `Rigenerare i suggerimenti di ${monthLabel(month)}?\n\nI ${suggested} turni suggeriti ora verranno sostituiti; le modifiche manuali restano.`
+      : `Generare i suggerimenti per ${monthLabel(month)}?\n\nLe modifiche manuali restano.`;
+    if (!confirm(msg)) return;
     setBusy(true);
     // lascia ridisegnare il pulsante prima del calcolo
     setTimeout(() => {
