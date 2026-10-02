@@ -275,6 +275,9 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                               </option>
                             )}
                             {ruotaCanCover(col.slot, date) && <option value={RUOTA}>Ruota comune</option>}
+                            {col.slot === 'BAMBI' && groups.every((g) => !g.opts.length) && (
+                              <option disabled>Nessun interessato: spunta "Bambi" nella scheda Persone</option>
+                            )}
                             {groups.map(({ y, opts }) => {
                               if (!opts.length) return null;
                               return (
