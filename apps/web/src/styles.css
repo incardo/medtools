@@ -655,6 +655,27 @@ td.strong {
   .table-wrap {
     max-height: none;
   }
+  /* Telefono: titolo centrato, schede in due colonne da tre; intestazione non fissa per lasciare spazio. */
+  .top {
+    position: static;
+    justify-content: center;
+    gap: 8px 12px;
+    padding: 10px 12px;
+  }
+  .brand {
+    flex-basis: 100%;
+    justify-content: center;
+  }
+  .tabs {
+    flex-basis: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, auto);
+    grid-auto-flow: column;
+  }
+  .tabs button {
+    justify-content: flex-start;
+  }
 }
 
 .login {
