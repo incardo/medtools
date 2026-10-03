@@ -178,7 +178,7 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
         <p className="hint">Scegli il tuo nome per vedere solo i tuoi turni del mese ed evidenziarli nel calendario. La scelta resta salvata in questo browser.</p>
       ) : (
         <div className="mine-rows">
-          <div className="mine-row">
+          <div className="mine-line">
             <strong className="mine-label">Giorni con i miei turni:</strong>
             {days.length ? (
               <div className="mine-seq">
@@ -198,7 +198,7 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
               <span className="muted">nessun turno assegnato in {monthLabel(month)}.</span>
             )}
           </div>
-          <div className="mine-row">
+          <div className="mine-line">
             <strong className="mine-label">Sommario per tipologia turni:</strong>
             <div className="mine-totals">
               {SUMMARY_TURNS.map(({ key }) => {
@@ -217,7 +217,7 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
               </span>
             </div>
           </div>
-          <div className="mine-row">
+          <div className="mine-line">
             <strong className="mine-label">Le mie assenze:</strong>
             {absences.length ? (
               <span>{absences.map((r) => `${fmt(r.from)}${r.to !== r.from ? `–${fmt(r.to)}` : ''} ${r.label}`).join(' · ')}</span>
