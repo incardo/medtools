@@ -13,7 +13,7 @@ import {
   type Year,
 } from '@medtools/engine';
 import { YEAR_LABEL, engineInput } from '../store';
-import { dayLabel, monthLabel, type ViewProps } from '../format';
+import { dayLabel, monthLabel, todayISO, type ViewProps } from '../format';
 
 /** Voci del menu, a gruppi: giorno intero, una fascia esclusa, una sola fascia disponibile. */
 const MENU: AbsenceKind[][] = [
@@ -146,6 +146,8 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
   };
   const current = open ? data.absences[`${open.personId}|${open.date}`] : undefined;
 
+  const today = todayISO();
+
   const summaryRow = (year: Year) => {
     const cells = totals.get(year)!;
     return (
@@ -214,7 +216,7 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
               {days.map((d) => {
                 const { dow, day } = dayLabel(d);
                 return (
-                  <th key={d} className={isWeekend(d) ? 'weekend' : ''}>
+                  <th key={d} className={(isWeekend(d) ? 'weekend' : '') + (d === today ? ' today' : '')} title={d === today ? 'Oggi' : undefined}>
                     <span className="dow">{dow}</span>
                     <br />
                     {day}
@@ -239,7 +241,7 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
                         key={d}
                         data-person={r.id}
                         data-date={d}
-                        className={`abs ${kind ?? ''} ${isWeekend(d) ? 'weekend' : ''} ${inactive ? 'inactive' : ''} ${
+                        className={`abs ${kind ?? ''} ${isWeekend(d) ? 'weekend' : ''} ${d === today ? 'today' : ''} ${inactive ? 'inactive' : ''} ${
                           open?.personId === r.id && open.date === d ? 'open' : ''
                         }`}
                         title={kind ? ABSENCE_INFO[kind].label : undefined}

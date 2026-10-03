@@ -23,3 +23,9 @@ export function dayLabel(date: string): { dow: string; day: string } {
 export function shortDate(date: string): string {
   return `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
 }
+
+/** Data di oggi (ora locale) in formato YYYY-MM-DD. */
+export function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

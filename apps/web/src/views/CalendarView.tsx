@@ -21,7 +21,7 @@ import {
   type Year,
 } from '@medtools/engine';
 import { YEAR_LABEL, cellsToAssignments, engineInput, type Cell } from '../store';
-import { dayLabel, monthLabel, type ViewProps } from '../format';
+import { dayLabel, monthLabel, todayISO, type ViewProps } from '../format';
 import { exportExcel } from '../exportExcel';
 import { GROUP_ENDS, HEADER_DEPTH, headerRows } from '../calendarHeaders';
 import { MyShifts, loadMe, saveMe } from './MyShifts';
@@ -30,6 +30,16 @@ const HEAD_ROWS = headerRows();
 const gend = (col: number) => (GROUP_ENDS.has(col) ? ' gend' : '');
 /** Voce del menu per scrivere un nome a mano. */
 const OTHER = '__altro__';
+/** Porta in vista la cella (o il giorno) di un avviso e la fa lampeggiare. */
+function jumpTo(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+  el.classList.remove('flash');
+  void el.offsetWidth; // riavvia l'animazione se si clicca due volte
+  el.classList.add('flash');
+  el.querySelector('select')?.focus({ preventScroll: true });
+}
 const norm = (s: string) =>
   s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -91,6 +101,12 @@ export function CalendarView({ data, setData, month }: ViewProps) {
   const softs = warnings.length - errors - holes;
   const suggested = assignments.filter((a) => a.source === 'suggested').length;
   const manual = assignments.length - suggested;
+  const today = todayISO();
+  /** Avvisi in ordine di giorno e di colonna, per l'elenco cliccabile. */
+  const sortedWarnings = useMemo(() => {
+    const col = (w: Warning) => COLUMNS.findIndex((c) => c.slot === w.slot && c.idx === (w.idx ?? 0));
+    return [...warnings].sort((a, b) => a.date.localeCompare(b.date) || col(a) - col(b));
+  }, [warnings]);
 
   const setCells = (fn: (c: Record<string, Cell>) => Record<string, Cell>) =>
     setData((d) => ({ ...d, assignments: { ...d.assignments, [month]: fn({ ...(d.assignments[month] ?? {}) }) } }));
@@ -167,6 +183,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
           Togli suggerimenti
         </button>
         <button
+          className="danger"
           onClick={() => {
             if (!confirm('Svuotare tutto il mese, comprese le modifiche manuali e i nomi della ruota comune?')) return;
             setCells(() => ({}));
@@ -191,6 +208,31 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         <span className={softs ? 'warn' : ''}>{softs} avvisi</span>
       </div>
 
+      {warnings.length > 0 && (
+        <details className="warn-list">
+          <summary>
+            Elenco di errori e avvisi ({warnings.length}) <span className="muted">· clicca per andare alla cella</span>
+          </summary>
+          <ul>
+            {sortedWarnings.map((w, i) => {
+              const { dow, day } = dayLabel(w.date);
+              const id = w.slot ? `cell-${keyOf({ date: w.date, slot: w.slot, idx: w.idx ?? 0 })}` : `day-${w.date}`;
+              return (
+                <li key={i}>
+                  <button className={`warn-item ${w.level === 'error' ? 'bad' : 'warn'}`} onClick={() => jumpTo(id)}>
+                    <span className="warn-when">
+                      {dow} {Number(day)}
+                      {w.slot ? ` · ${SLOT_INFO[w.slot].label}${w.idx ? ` (${w.idx + 1}°)` : ''}` : ''}
+                    </span>
+                    {w.personId && names.get(w.personId) ? <b>{names.get(w.personId)}:</b> : null} {w.message}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
+
       <MyShifts data={data} month={month} roster={roster} assignments={assignments} me={me} setMe={setMe} />
 
       <div className="legend">
@@ -203,6 +245,11 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         <span className="chip err">errore</span>
         <span className="chip wrn">scoperto / avviso</span>
         {me && <span className="chip mine">i miei turni</span>}
+        {month === today.slice(0, 7) && (
+          <span className="chip">
+            <span className="today-dot" /> oggi
+          </span>
+        )}
       </div>
 
       <div className="table-wrap">
@@ -234,9 +281,13 @@ export function CalendarView({ data, setData, month }: ViewProps) {
               const { dow, day: dd } = dayLabel(date);
               const active = roster.activeOn(date);
               return (
-                <tr key={date} className={(isWeekend(date) ? 'weekend' : '') + (myDays.has(date) ? ' mine-row' : '')}>
-                  <th className="sticky day">
+                <tr
+                  key={date}
+                  className={(isWeekend(date) ? 'weekend' : '') + (myDays.has(date) ? ' mine-row' : '') + (date === today ? ' today' : '')}
+                >
+                  <th id={`day-${date}`} className="sticky day" title={date === today ? 'Oggi' : undefined}>
                     <span className="dow">{dow}</span> {dd}
+                    {date === today && <span className="today-dot" aria-label="oggi" />}
                   </th>
                   {COLUMNS.map((col, i) => {
                     const k = keyOf({ date, ...col });
@@ -285,7 +336,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                       !cell?.who || (cell.who === RUOTA && ruotaCanCover(col.slot, date)) || groups.some((g) => g.opts.some((x) => x.person.id === cell.who));
                     return (
                       <Fragment key={k}>
-                        <td className={cls} title={title}>
+                        <td id={`cell-${k}`} className={cls} title={title}>
                           <select
                             value={cell?.who ?? ''}
                             onChange={(e) => {

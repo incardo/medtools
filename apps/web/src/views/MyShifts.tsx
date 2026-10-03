@@ -177,47 +177,55 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
       {!person ? (
         <p className="hint">Scegli il tuo nome per vedere solo i tuoi turni del mese ed evidenziarli nel calendario. La scelta resta salvata in questo browser.</p>
       ) : (
-        <>
-          <div className="mine-totals">
-            {SUMMARY_TURNS.map(({ key }) => {
-              const n = summaryValue(summary, key);
-              return n ? (
-                <span key={key}>
-                  {TURN_LABEL[key]} <b>{n}</b>
-                </span>
-              ) : null;
-            })}
-            <span>
-              Totale <b>{summaryValue(summary, 'total')}</b>
-            </span>
-            <span>
-              Weekend <b>{summaryValue(summary, 'weekend')}</b>
-            </span>
+        <div className="mine-rows">
+          <div className="mine-row">
+            <strong className="mine-label">Giorni con i miei turni:</strong>
+            {days.length ? (
+              <div className="mine-seq">
+                {days.map(([d, shifts], i) => (
+                  <Fragment key={d}>
+                    {i > 0 && <span className="mine-arrow">→</span>}
+                    <span className={`mine-step${isWeekend(d) ? ' weekend' : ''}`}>
+                      <span className="mine-day">{fmt(d)}</span> {shifts.join(' + ')}
+                    </span>
+                  </Fragment>
+                ))}
+                <button className="mine-copy" onClick={copy} title="Copia la sequenza come testo, da incollare in un messaggio">
+                  {copied ? 'Copiato ✓' : 'Copia'}
+                </button>
+              </div>
+            ) : (
+              <span className="muted">nessun turno assegnato in {monthLabel(month)}.</span>
+            )}
           </div>
-          {days.length ? (
-            <div className="mine-seq">
-              {days.map(([d, shifts], i) => (
-                <Fragment key={d}>
-                  {i > 0 && <span className="mine-arrow">→</span>}
-                  <span className={`mine-step${isWeekend(d) ? ' weekend' : ''}`}>
-                    <span className="mine-day">{fmt(d)}</span> {shifts.join(' + ')}
+          <div className="mine-row">
+            <strong className="mine-label">Sommario per tipologia turni:</strong>
+            <div className="mine-totals">
+              {SUMMARY_TURNS.map(({ key }) => {
+                const n = summaryValue(summary, key);
+                return n ? (
+                  <span key={key}>
+                    {TURN_LABEL[key]} <b>{n}</b>
                   </span>
-                </Fragment>
-              ))}
-              <button className="mine-copy" onClick={copy} title="Copia la sequenza come testo, da incollare in un messaggio">
-                {copied ? 'Copiato ✓' : 'Copia'}
-              </button>
+                ) : null;
+              })}
+              <span className="mine-total">
+                Totale <b>{summaryValue(summary, 'total')}</b>
+              </span>
+              <span>
+                Weekend <b>{summaryValue(summary, 'weekend')}</b>
+              </span>
             </div>
-          ) : (
-            <p className="hint">Nessun turno assegnato a {person.name} in {monthLabel(month)}.</p>
-          )}
-          {absences.length > 0 && (
-            <p className="mine-abs">
-              <span className="muted">Assenze:</span>{' '}
-              {absences.map((r) => `${fmt(r.from)}${r.to !== r.from ? `–${fmt(r.to)}` : ''} ${r.label}`).join(' · ')}
-            </p>
-          )}
-        </>
+          </div>
+          <div className="mine-row">
+            <strong className="mine-label">Le mie assenze:</strong>
+            {absences.length ? (
+              <span>{absences.map((r) => `${fmt(r.from)}${r.to !== r.from ? `–${fmt(r.to)}` : ''} ${r.label}`).join(' · ')}</span>
+            ) : (
+              <span className="muted">nessuna.</span>
+            )}
+          </div>
+        </div>
       )}
     </details>
   );
