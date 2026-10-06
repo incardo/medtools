@@ -1,4 +1,4 @@
-import { addDays, daysOfMonth, isWeekend, weekday } from './dates';
+import { addDays, countWeekends, daysOfMonth, isWeekend, weekday, weekendKey } from './dates';
 import { Roster } from './roster';
 import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rules';
 import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
@@ -108,6 +108,9 @@ export function countExtras(assignments: Assignment[]): ExtraHistory {
   return out;
 }
 
+/** Tetto di weekend lavorati nel mese per anno di corso (preferenza forte): anche una sola giornata conta come weekend. */
+export const MAX_WEEKENDS: Partial<Record<number, number>> = { 5: 2 };
+
 /** Pesi del punteggio: più alto = meno adatto. Descritti anche nella scheda Regole. */
 export const WEIGHTS = {
   /** per ogni turno dello stesso tipo già fatto */
@@ -118,6 +121,8 @@ export const WEIGHTS = {
   weekend: 4,
   /** se il posto viola lo smonto dopo il weekend */
   weekendRest: 8,
+  /** se il posto porta un V anno oltre il tetto di weekend nel mese (anche una sola giornata conta come weekend) */
+  weekendCap: 40,
   /** per ogni giorno del blocco Ped Urg in cui la persona non è disponibile */
   blockMissing: 10,
   /** per ogni blocco Ped Urg o weekend di OBI già fatto (nella scelta di chi fa il blocco) */
@@ -130,6 +135,8 @@ export const COST = {
   hole: 1000,
   /** per ogni smonto dopo il weekend non rispettato */
   weekendRest: 15,
+  /** per ogni weekend oltre il tetto mensile, per persona */
+  weekendCap: 60,
   /** per ogni blocco (Ped Urg, OBI e PS del weekend, scambio del III anno) spezzato */
   brokenLink: 20,
   /** squilibrio dentro ogni anno di corso (varianza): turni totali */
@@ -189,12 +196,26 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const blockMissing = (p: string, pos: Position) =>
     (pos.blockAhead ?? []).filter((slots, i) => roster.unavailableForSlots(p, addDays(pos.date, i + 1), slots)).length;
 
+  // Weekend toccati da un posto: il suo giorno e i giorni collegati del blocco (es. notte di venerdì → domenica).
+  const weekendsOfPos = (pos: Position): string[] => {
+    const days = [pos.date, ...(pos.blockAhead ?? []).flatMap((slots, i) => (slots.length ? [addDays(pos.date, i + 1)] : []))];
+    return [...new Set(days.filter(isWeekend).map(weekendKey))];
+  };
+  const overCap = (p: string, pos: Position): boolean => {
+    const cap = MAX_WEEKENDS[roster.yearOf(p, pos.date) ?? 3];
+    if (cap === undefined) return false;
+    const mine = new Set([...(weekendDays.get(p) ?? [])].map(weekendKey));
+    const added = weekendsOfPos(pos).filter((k) => !mine.has(k));
+    return added.length > 0 && mine.size + added.length > cap;
+  };
+
   const score = (p: string, pos: Position): number => {
     let s = countOf(p)[SLOT_INFO[pos.slot].family] * WEIGHTS.family + totalOf(p) * WEIGHTS.total;
     if (isWeekend(pos.date)) s += weekendOf(p) * WEIGHTS.weekend;
     if (board.weekendRestDue(p, pos.date)) s += WEIGHTS.weekendRest;
     // Blocco Ped Urg: meglio chi è disponibile anche nei giorni successivi del blocco.
     s += blockMissing(p, pos) * WEIGHTS.blockMissing;
+    if (overCap(p, pos)) s += WEIGHTS.weekendCap;
     return s + rng() * 1.5;
   };
 
@@ -281,6 +302,11 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       if (pos.prevDaySlot && who && who !== RUOTA && !board.linked(who, pos)) brokenLinks++;
     }
   }
+  let overWeekends = 0;
+  for (const [p, days] of weekendDays) {
+    const cap = MAX_WEEKENDS[roster.yearOf(p, [...days][0]) ?? 3];
+    if (cap !== undefined) overWeekends += Math.max(0, countWeekends(days) - cap);
+  }
   let spread = 0;
   const lastDay = demand[demand.length - 1][0].date;
   for (const year of [3, 4, 5]) {
@@ -289,7 +315,13 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     spread += variance(ids.map(weekendOf)) * COST.spreadWeekend;
     for (const f of BALANCED) spread += variance(ids.map((p) => countOf(p)[f])) * COST.spreadFamily;
   }
-  return { assignments: out, holes, cost: holes.length * COST.hole + restViolations * COST.weekendRest + brokenLinks * COST.brokenLink + spread };
+  return { assignments: out, holes, cost:
+      holes.length * COST.hole +
+      restViolations * COST.weekendRest +
+      overWeekends * COST.weekendCap +
+      brokenLinks * COST.brokenLink +
+      spread,
+  };
 }
 
 /** Tentativi per mese: più tentativi, equilibrio migliore (e calcolo più lungo). */
@@ -366,6 +398,26 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
   for (const a of assignments) {
     if (a.who && !exists.has(keyOf(a)))
       out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level: 'warn', message: 'Posto non previsto in questo giorno' });
+  }
+
+  // Tetto di weekend nel mese: avviso sul primo giorno del weekend di troppo.
+  const monthDays = new Set(demand.map((day) => day[0].date));
+  const weekendsBy = new Map<string, Set<string>>();
+  for (const a of assignments) {
+    if (!isPerson(a.who) || !isWeekend(a.date) || !monthDays.has(a.date)) continue;
+    weekendsBy.set(a.who, (weekendsBy.get(a.who) ?? new Set()).add(a.date));
+  }
+  for (const [p, days] of weekendsBy) {
+    const sorted = [...days].sort();
+    const cap = MAX_WEEKENDS[roster.yearOf(p, sorted[0]) ?? 3];
+    if (cap === undefined || countWeekends(sorted) <= cap) continue;
+    const seen = new Set<string>();
+    for (const d of sorted) {
+      if (seen.has(weekendKey(d))) continue;
+      seen.add(weekendKey(d));
+      if (seen.size === cap + 1)
+        out.push({ date: d, personId: p, level: 'warn', message: `Più di ${cap} weekend nel mese (${countWeekends(sorted)})` });
+    }
   }
 
   for (const day of demand) {

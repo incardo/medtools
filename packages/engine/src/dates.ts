@@ -33,6 +33,18 @@ export function isWeekend(date: string): boolean {
   return w === 0 || w === 6;
 }
 
+/** Il weekend di un sabato o di una domenica, indicato dalla data del sabato. */
+export function weekendKey(date: string): string {
+  return weekday(date) === 0 ? addDays(date, -1) : date;
+}
+
+/** Weekend distinti (anche una sola giornata) tra i giorni dati. */
+export function countWeekends(days: Iterable<string>): number {
+  const keys = new Set<string>();
+  for (const d of days) if (isWeekend(d)) keys.add(weekendKey(d));
+  return keys.size;
+}
+
 export function daysOfMonth(month: string): string[] {
   const [y, m] = month.split('-').map(Number);
   const count = new Date(Date.UTC(y, m, 0)).getUTCDate();

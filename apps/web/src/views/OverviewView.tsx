@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Person, type Year } from '@medtools/engine';
+import { MAX_WEEKENDS, daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Person, type Year } from '@medtools/engine';
 import { YEAR_LABEL, academicYearFor, engineInput } from '../store';
 import { monthLabel, type ViewProps } from '../format';
 import { groupEnds, headerRows } from '../calendarHeaders';
@@ -96,8 +96,9 @@ export function OverviewView({ data, month }: ViewProps) {
         </div>
       </div>
       <p className="hint">
-        Turni per tipo; mattina e pomeriggio si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due. <b>Weekend</b> = giorni di sabato o domenica
-        lavorati. Il totale esclude Bambi e i reparti facoltativi (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
+        Turni per tipo; mattina e pomeriggio si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due. <b>Sab/dom · Giorni</b> = giorni di sabato o
+        domenica lavorati (un 12h conta una volta), non il numero di weekend. <b>Sab/dom · Weekend</b> = weekend distinti con almeno un
+        turno (anche una sola giornata conta): per il V anno il tetto è {MAX_WEEKENDS[5]} al mese. Il totale esclude Bambi e i reparti facoltativi (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
       <div className="legend">
         <span className="chip" style={{ background: 'rgba(46, 144, 250, 0.35)' }}>

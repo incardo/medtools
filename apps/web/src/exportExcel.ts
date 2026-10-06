@@ -184,7 +184,7 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
   title(
     rs,
     `Riepilogo turni · ${Label}`,
-    'Turni del mese per tipo; mattina e pomeriggio insieme. Un turno da 12h conta come due. Weekend = giorni di sabato o domenica lavorati. Il totale esclude Bambi e i reparti facoltativi; la ruota comune non è conteggiata.',
+    'Turni del mese per tipo; mattina e pomeriggio insieme. Un turno da 12h conta come due. Sab/dom: Giorni = giorni di sabato o domenica lavorati (non weekend); Weekend = weekend distinti con almeno un turno. Il totale esclude Bambi e i reparti facoltativi; la ruota comune non è conteggiata.',
     sumWidth,
   );
   for (const [c, text] of [

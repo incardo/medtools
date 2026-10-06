@@ -1,4 +1,4 @@
-import { OUTSIDE_BALANCE, daysOfMonth, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
+import { OUTSIDE_BALANCE, countWeekends, daysOfMonth, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
 import { cellsToAssignments, type AppData } from './store';
 import type { HeadNode } from './calendarHeaders';
 
@@ -25,7 +25,7 @@ export const SUMMARY_TURNS: { key: string; slots: SlotCode[] }[] = [
 export const WARD_KEYS = ['ORTO', 'RADIO', 'ANEST', 'CHIR'];
 
 /** Colonne dopo i turni, nell'ordine dell'intestazione. */
-export const SUMMARY_EXTRA = ['total', 'weekend', 'ferie', 'indisp', 'parziali'] as const;
+export const SUMMARY_EXTRA = ['total', 'weekend', 'weekends', 'ferie', 'indisp', 'parziali'] as const;
 export type SummaryExtra = (typeof SUMMARY_EXTRA)[number];
 
 export const SUMMARY_HEADERS: HeadNode[] = [
@@ -36,7 +36,7 @@ export const SUMMARY_HEADERS: HeadNode[] = [
   { label: 'Amb' },
   { label: 'Reparti', children: [{ label: 'Orto' }, { label: 'Radio' }, { label: 'Anest' }, { label: 'Chir' }] },
   { label: 'Totale' },
-  { label: 'Weekend' },
+  { label: 'Sab/dom', children: [{ label: 'Giorni' }, { label: 'Weekend' }] },
   { label: 'Assenze (giorni)', children: [{ label: 'Ferie' }, { label: 'Indisp.' }, { label: 'Parziali' }] },
 ];
 
@@ -44,8 +44,10 @@ export interface PersonSummary {
   slots: Partial<Record<SlotCode, number>>;
   /** Turni del periodo, senza Bambi e reparti facoltativi (non entrano nel bilanciamento). */
   total: number;
-  /** Giorni di sabato o domenica con almeno un turno. */
+  /** Giorni di sabato o domenica con almeno un turno (un 12h conta una volta). */
   weekend: number;
+  /** Weekend distinti con almeno un turno: anche una sola giornata conta come weekend. */
+  weekends: number;
   ferie: number;
   indisp: number;
   parziali: number;
@@ -57,7 +59,7 @@ const OUTSIDE_TOTAL: SlotCode[] = OUTSIDE_BALANCE;
 /** Conteggi per persona su uno o più mesi. La ruota comune e i nomi esterni non sono conteggiati. */
 export function summarize(data: AppData, months: string[]): Record<string, PersonSummary> {
   const out: Record<string, PersonSummary> = {};
-  const get = (id: string) => (out[id] ??= { slots: {}, total: 0, weekend: 0, ferie: 0, indisp: 0, parziali: 0 });
+  const get = (id: string) => (out[id] ??= { slots: {}, total: 0, weekend: 0, weekends: 0, ferie: 0, indisp: 0, parziali: 0 });
   const weekendDays = new Map<string, Set<string>>();
   for (const m of months) {
     for (const a of cellsToAssignments(data.assignments[m])) {
@@ -78,7 +80,10 @@ export function summarize(data: AppData, months: string[]): Record<string, Perso
       }
     }
   }
-  for (const [id, days] of weekendDays) get(id).weekend = days.size;
+  for (const [id, days] of weekendDays) {
+    get(id).weekend = days.size;
+    get(id).weekends = countWeekends(days);
+  }
   return out;
 }
 

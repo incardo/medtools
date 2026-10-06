@@ -3,6 +3,7 @@ import {
   ABSENCE_BLOCKS,
   ABSENCE_INFO,
   ABSENCE_LIMITS,
+  MAX_WEEKENDS,
   OPTIONAL_WARDS,
   COLUMNS,
   COST,
@@ -166,6 +167,10 @@ export function RulesView({ data, month }: ViewProps) {
           posto va a un altro V anno. La domenica agli alti c'è sempre una persona diversa dal sabato.
         </li>
         <li>
+          <b>Al massimo {MAX_WEEKENDS[5]} weekend al mese</b> per ogni V anno: anche una sola giornata (per esempio un sabato) conta come
+          weekend. È una preferenza forte: nei mesi con 5 weekend, con 14 V anno, qualcuno può arrivare a 3 (avviso nel calendario).
+        </li>
+        <li>
           <b>OBI del weekend</b>: la stessa persona sabato e domenica (12h), poi smonto il lunedì. I weekend di OBI ruotano tra i V anno: va
           prima a chi ne ha fatti meno nell'anno.
         </li>
@@ -285,6 +290,10 @@ export function RulesView({ data, month }: ViewProps) {
                 <td>se il posto farebbe saltare lo smonto dopo il weekend</td>
               </tr>
               <tr>
+                <td>+{WEIGHTS.weekendCap}</td>
+                <td>se il posto porta un V anno oltre {MAX_WEEKENDS[5]} weekend nel mese (contando anche i giorni collegati, es. notte di venerdì → domenica)</td>
+              </tr>
+              <tr>
                 <td>+{WEIGHTS.blockMissing}</td>
                 <td>per ogni giorno collegato (blocco Ped Urg, OBI e PS del weekend) in cui la persona non è disponibile</td>
               </tr>
@@ -314,6 +323,10 @@ export function RulesView({ data, month }: ViewProps) {
               <tr>
                 <td>{COST.weekendRest}</td>
                 <td>per ogni smonto dopo il weekend non rispettato</td>
+              </tr>
+              <tr>
+                <td>{COST.weekendCap}</td>
+                <td>per ogni weekend oltre il tetto mensile, per persona</td>
               </tr>
               <tr>
                 <td>

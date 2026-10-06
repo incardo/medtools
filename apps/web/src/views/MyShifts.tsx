@@ -217,7 +217,10 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
                 Totale <b>{summaryValue(summary, 'total')}</b>
               </span>
               <span>
-                Weekend <b>{summaryValue(summary, 'weekend')}</b>
+                Giorni sab/dom <b>{summaryValue(summary, 'weekend')}</b>
+              </span>
+              <span>
+                Weekend <b>{summaryValue(summary, 'weekends')}</b>
               </span>
             </div>
           </div>

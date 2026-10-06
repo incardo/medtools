@@ -9,6 +9,7 @@ import {
   buildDemand,
   countAssignments,
   countExtras,
+  countWeekends,
   daysOfMonth,
   isWeekend,
   keyOf,
@@ -367,6 +368,17 @@ describe('motore', () => {
   it('il calendario suggerito non ha errori di validazione', () => {
     const errors = validate(input, res.assignments).filter((w) => w.level === 'error');
     expect(errors).toEqual([]);
+  });
+
+  it('V anno: al massimo 2 weekend nel mese (anche una sola giornata conta)', () => {
+    const ids = input.enrollments.filter((e) => e.year === 5).map((e) => e.personId);
+    for (const id of ids) {
+      expect(countWeekends(res.assignments.filter((a) => a.who === id && isWeekend(a.date)).map((a) => a.date))).toBeLessThanOrEqual(2);
+    }
+    // A mano oltre il tetto: avviso.
+    const three: Assignment[] = ['2026-11-07', '2026-11-15', '2026-11-21'].map((date) => ({ date, slot: 'OBI_M', idx: 0, who: 'alfa', source: 'manual' }));
+    const ws = validate(input, three).filter((w) => w.message.startsWith('Più di 2 weekend'));
+    expect(ws.map((w) => [w.date, w.level])).toEqual([['2026-11-21', 'warn']]);
   });
 
   it('bilancia i giorni di weekend lavorati dentro ogni anno di corso', () => {
