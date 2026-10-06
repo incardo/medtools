@@ -1,4 +1,5 @@
 ﻿import {
+  SLOT_INFO,
   academicYearOf,
   addDays,
   countAssignments,
@@ -87,13 +88,17 @@ export function academicYearFor(data: AppData, month: string): AcademicYear {
 }
 
 export function cellsToAssignments(cells: Record<string, Cell> | undefined): Assignment[] {
-  return Object.entries(cells ?? {})
-    .filter(([, c]) => c.who)
-    .map(([k, c]) => {
-      const [date, rest] = k.split('|');
-      const [slot, idx] = rest.split('#');
-      return { date, slot: slot as SlotCode, idx: Number(idx), who: c.who, source: c.source };
-    });
+  return (
+    Object.entries(cells ?? {})
+      .filter(([, c]) => c.who)
+      .map(([k, c]) => {
+        const [date, rest] = k.split('|');
+        const [slot, idx] = rest.split('#');
+        return { date, slot: slot as SlotCode, idx: Number(idx), who: c.who, source: c.source };
+      })
+      // Colonne tolte dalle regole (es. alti opzionale): i dati restano nel database ma non si mostrano né si contano.
+      .filter((a) => a.slot in SLOT_INFO)
+  );
 }
 
 function prevMonth(month: string): string {

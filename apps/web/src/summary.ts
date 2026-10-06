@@ -1,4 +1,4 @@
-import { daysOfMonth, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
+import { OUTSIDE_BALANCE, daysOfMonth, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
 import { cellsToAssignments, type AppData } from './store';
 import type { HeadNode } from './calendarHeaders';
 
@@ -8,25 +8,33 @@ import type { HeadNode } from './calendarHeaders';
  */
 export const SUMMARY_TURNS: { key: string; slots: SlotCode[] }[] = [
   { key: 'PS_ALTI', slots: ['PS_ALTI_M', 'PS_ALTI_P'] },
-  { key: 'PS_OPZ', slots: ['PS_OPZ_M', 'PS_OPZ_P'] },
   { key: 'PS_VERDI', slots: ['PS_VERDI_M', 'PS_VERDI_P'] },
+  { key: 'PS_AUTO', slots: ['PS_AUTO_M', 'PS_AUTO_P'] },
   { key: 'PS_NOTTE', slots: ['PS_NOTTE'] },
   { key: 'OBI', slots: ['OBI_M', 'OBI_P'] },
   { key: 'PEDU', slots: ['PEDU_M', 'PEDU_P'] },
   { key: 'BAMBI', slots: ['BAMBI'] },
   { key: 'AMB', slots: ['AMB'] },
+  { key: 'ORTO', slots: ['ORTO'] },
+  { key: 'RADIO', slots: ['RADIO'] },
+  { key: 'ANEST', slots: ['ANEST'] },
+  { key: 'CHIR', slots: ['CHIR'] },
 ];
+
+/** Colonne dei reparti facoltativi (V e IV anno, fuori dal bilanciamento). */
+export const WARD_KEYS = ['ORTO', 'RADIO', 'ANEST', 'CHIR'];
 
 /** Colonne dopo i turni, nell'ordine dell'intestazione. */
 export const SUMMARY_EXTRA = ['total', 'weekend', 'ferie', 'indisp', 'parziali'] as const;
 export type SummaryExtra = (typeof SUMMARY_EXTRA)[number];
 
 export const SUMMARY_HEADERS: HeadNode[] = [
-  { label: 'PS', children: [{ label: 'Alti' }, { label: 'Alti opz.' }, { label: 'Verdi' }, { label: 'Notte' }] },
+  { label: 'PS', children: [{ label: 'Alti' }, { label: 'Verdi' }, { label: 'Auton.' }, { label: 'Notte' }] },
   { label: 'OBI' },
   { label: 'Ped Urg' },
   { label: 'Bambi' },
   { label: 'Amb' },
+  { label: 'Reparti', children: [{ label: 'Orto' }, { label: 'Radio' }, { label: 'Anest' }, { label: 'Chir' }] },
   { label: 'Totale' },
   { label: 'Weekend' },
   { label: 'Assenze (giorni)', children: [{ label: 'Ferie' }, { label: 'Indisp.' }, { label: 'Parziali' }] },
@@ -34,7 +42,7 @@ export const SUMMARY_HEADERS: HeadNode[] = [
 
 export interface PersonSummary {
   slots: Partial<Record<SlotCode, number>>;
-  /** Turni del periodo, senza Bambi e alti opzionale (non entrano nel bilanciamento). */
+  /** Turni del periodo, senza Bambi e reparti facoltativi (non entrano nel bilanciamento). */
   total: number;
   /** Giorni di sabato o domenica con almeno un turno. */
   weekend: number;
@@ -44,7 +52,7 @@ export interface PersonSummary {
 }
 
 /** Turni che non entrano nel totale né nel bilanciamento. */
-const OUTSIDE_TOTAL: SlotCode[] = ['BAMBI', 'PS_OPZ_M', 'PS_OPZ_P'];
+const OUTSIDE_TOTAL: SlotCode[] = OUTSIDE_BALANCE;
 
 /** Conteggi per persona su uno o più mesi. La ruota comune e i nomi esterni non sono conteggiati. */
 export function summarize(data: AppData, months: string[]): Record<string, PersonSummary> {

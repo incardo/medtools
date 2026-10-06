@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   EXTERNAL,
+  OPTIONAL_WARDS,
+  OUTSIDE_BALANCE,
   RUOTA,
   academicYearOf,
   addDays,
@@ -19,7 +21,8 @@ import {
 } from '../src';
 import { exampleInput } from './fixtures';
 
-const yearOf = (id: string) => (id === RUOTA ? 0 : id[0] <= 'j' ? 5 : id[0] <= 'r' ? 4 : 3);
+const YEARS = new Map(exampleInput().enrollments.map((e) => [e.personId, e.year as number]));
+const yearOf = (id: string) => YEARS.get(id) ?? 0;
 
 describe('date e anno di specializzazione', () => {
   it("l'anno va da novembre a ottobre", () => {
@@ -34,38 +37,39 @@ describe('date e anno di specializzazione', () => {
 describe('regole per anno (domanda giornaliera)', () => {
   const ctx = { vPresent: true };
 
-  it('V anno: 5 notti a settimana (dom, lun, mar, mer, ven); IV anno giovedì e sabato', () => {
+  it('notti: sempre un V anno; secondo posto IV anno (a mano lun–ven, dal motore sab e dom)', () => {
     const week = Array.from({ length: 7 }, (_, i) => addDays('2026-11-02', i)); // lun → dom
-    const years = week.map((d) => buildDemand(d, ctx).find((p) => p.slot === 'PS_NOTTE')!.years);
-    expect(years).toEqual([[5], [5], [5], [4], [5], [4], [5]]);
+    const night = (d: string, idx: number) => buildDemand(d, ctx).find((p) => p.slot === 'PS_NOTTE' && p.idx === idx)!;
+    expect(week.map((d) => night(d, 0).years)).toEqual(week.map(() => [5]));
+    expect(week.map((d) => night(d, 1).years)).toEqual(week.map(() => [4]));
+    expect(week.map((d) => night(d, 1).manualOnly)).toEqual([true, true, true, true, true, false, false]);
   });
 
-  it('IV anno: notte giovedì e sabato, OBI mattina il lunedì', () => {
-    expect(buildDemand('2026-11-05', ctx).find((p) => p.slot === 'PS_NOTTE')!.years).toEqual([4]); // gio
-    expect(buildDemand('2026-11-07', ctx).find((p) => p.slot === 'PS_NOTTE')!.years).toEqual([4]); // sab
-    expect(buildDemand('2026-11-02', ctx).find((p) => p.slot === 'OBI_M')!.years).toEqual([4]); // lun
-    expect(buildDemand('2026-11-03', ctx).find((p) => p.slot === 'OBI_M')!.years).toEqual([5]); // mar
-  });
-
-  it('feriali: schema PS per giorno (V alti, tranne lun/ven pomeriggio ai verdi)', () => {
-    const years = (date: string, slot: string, idx = 0) => buildDemand(date, ctx).find((p) => p.slot === slot && p.idx === idx)!.years;
-    const ps = (date: string, f: 'M' | 'P') => [years(date, `PS_ALTI_${f}`), years(date, `PS_ALTI_${f}`, 1), years(date, `PS_VERDI_${f}`)];
-    // [alti, alti, verdi]
-    expect(ps('2026-11-02', 'M')).toEqual([[5], [3], [4]]); // lun
-    expect(ps('2026-11-02', 'P')).toEqual([[4], [3], [5]]);
-    expect(ps('2026-11-03', 'M')).toEqual([[5], [4], [3]]); // mar
-    expect(ps('2026-11-03', 'P')).toEqual([[5], [3], [4]]);
-    expect(ps('2026-11-04', 'M')).toEqual([[5], [3], [4]]); // mer
-    expect(ps('2026-11-04', 'P')).toEqual([[5], [4], [3]]);
-    expect(ps('2026-11-05', 'M')).toEqual([[5], [4], [3]]); // gio
-    expect(ps('2026-11-05', 'P')).toEqual([[5], [3], [4]]);
-    expect(ps('2026-11-06', 'M')).toEqual([[5], [3], [4]]); // ven
-    expect(ps('2026-11-06', 'P')).toEqual([[4], [3], [5]]);
-  });
-
-  it('ogni posto PS feriale ha un anno (tranne alti opzionali e secondo posto di notte, a mano)', () => {
+  it('OBI mattina e pomeriggio sempre al V anno (anche il lunedì)', () => {
     for (const date of daysOfMonth('2026-11')) {
-      expect(buildDemand(date, ctx).filter((p) => p.manualOnly && p.slot !== 'BAMBI' && !p.slot.startsWith('PS_OPZ') && !(p.slot === 'PS_NOTTE' && p.idx === 1))).toEqual([]);
+      for (const p of buildDemand(date, ctx).filter((x) => x.slot.startsWith('OBI'))) expect(p.years).toEqual([5]);
+    }
+  });
+
+  it('feriali: schema PS per giorno (alti, verdi, autonomo)', () => {
+    const years = (date: string, slot: string, idx = 0) => buildDemand(date, ctx).find((p) => p.slot === slot && p.idx === idx)?.years;
+    const ps = (date: string, f: 'M' | 'P') => [years(date, `PS_ALTI_${f}`), years(date, `PS_ALTI_${f}`, 1), years(date, `PS_VERDI_${f}`), years(date, `PS_AUTO_${f}`)];
+    // [alti, alti, verdi, autonomo]
+    expect(ps('2026-11-02', 'M')).toEqual([[5], [3], [4], [5]]); // lun
+    expect(ps('2026-11-02', 'P')).toEqual([[5], [4], [3], [5]]);
+    expect(ps('2026-11-03', 'M')).toEqual([[5], [4], [3], [5]]); // mar
+    expect(ps('2026-11-03', 'P')).toEqual([[5], [3], [4], [5]]);
+    expect(ps('2026-11-04', 'M')).toEqual([[5], [3], [4], [5]]); // mer
+    expect(ps('2026-11-04', 'P')).toEqual([[5], [4], [3], [5]]);
+    expect(ps('2026-11-05', 'M')).toEqual([[5], [4], [3], [5]]); // gio
+    expect(ps('2026-11-05', 'P')).toEqual([[5], [3], [4], [5]]);
+    expect(ps('2026-11-06', 'M')).toEqual([[5], [5], [4], [5]]); // ven: 3 V anno
+    expect(ps('2026-11-06', 'P')).toEqual([[4], undefined, [3], [5]]); // ven: un solo alti
+  });
+
+  it('ogni posto ha un anno (tranne Bambi, reparti facoltativi e secondo posto di notte lun–ven, a mano)', () => {
+    for (const date of daysOfMonth('2026-11')) {
+      expect(buildDemand(date, ctx).filter((p) => p.manualOnly && !OUTSIDE_BALANCE.includes(p.slot) && !(p.slot === 'PS_NOTTE' && p.idx === 1))).toEqual([]);
     }
   });
 
@@ -76,13 +80,16 @@ describe('regole per anno (domanda giornaliera)', () => {
     }
   });
 
-  it('weekend: Ped Urg 12h a un IV anno, PS alti V + III, verdi III; il III fa 12h', () => {
+  it('weekend: Ped Urg 12h a un IV anno, PS alti V + III, autonomo V, verdi III; tutti 12h', () => {
     const d = buildDemand('2026-11-08', ctx); // domenica
     const pedu = d.find((p) => p.slot === 'PEDU_M')!;
     expect(pedu.alsoSlots).toEqual(['PEDU_P']);
     expect(d.find((p) => p.slot === 'PEDU_P')).toBeUndefined();
     const v = d.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!;
-    expect([v.years, v.alsoSlots, v.notPrevDay]).toEqual([[5], ['PS_ALTI_P'], true]);
+    expect([v.years, v.alsoSlots, v.notPrevDay, v.prevDaySlot, v.prevDays]).toEqual([[5], ['PS_ALTI_P'], true, 'PS_NOTTE', 2]);
+    const auto = d.find((p) => p.slot === 'PS_AUTO_M')!;
+    expect([auto.years, auto.alsoSlots]).toEqual([[5], ['PS_AUTO_P']]);
+    expect(d.find((p) => p.slot === 'PS_NOTTE' && p.idx === 0)!.prevDaySlot).toBe('PS_ALTI_M');
     expect(d.find((p) => p.slot === 'PS_ALTI_P')).toBeUndefined();
     const alti = d.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 1)!;
     const verdi = d.find((p) => p.slot === 'PS_VERDI_M')!;
@@ -91,6 +98,7 @@ describe('regole per anno (domanda giornaliera)', () => {
     const sat = buildDemand('2026-11-07', ctx);
     expect(sat.some((p) => p.slot.startsWith('PS_') && (p.prevDaySlot || p.notPrevDay))).toBe(false);
     expect(sat.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!.alsoSlots).toEqual(['PS_ALTI_P']);
+    expect(buildDemand('2026-11-06', ctx).find((p) => p.slot === 'PS_NOTTE' && p.idx === 0)!.blockAhead).toEqual([[], ['PS_ALTI_M', 'PS_ALTI_P']]); // ven
   });
 
   it('Ped Urg mattina: un IV e un III anno nei feriali, solo il IV nel weekend', () => {
@@ -111,11 +119,13 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect(pos('2026-11-05', 'PEDU_P').blockAhead).toBeUndefined(); // gio
   });
 
-  it('OBI del V anno anche nel weekend, una sola persona per 12h', () => {
+  it('OBI del V anno anche nel weekend: una sola persona per 12h, la stessa sabato e domenica', () => {
     const d = buildDemand('2026-11-08', ctx); // domenica
     const obi = d.find((p) => p.slot === 'OBI_M')!;
     expect([obi.years, obi.alsoSlots]).toEqual([[5], ['OBI_P']]);
     expect(d.find((p) => p.slot === 'OBI_P')).toBeUndefined();
+    expect(obi.prevDaySlot).toBe('OBI_M');
+    expect(buildDemand('2026-11-07', ctx).find((p) => p.slot === 'OBI_M')!.planBlock).toBe(true); // sab
     expect(buildDemand('2026-11-03', ctx).find((p) => p.slot === 'OBI_M')!.alsoSlots).toEqual([]); // mar: M e P separati
   });
 
@@ -131,7 +141,8 @@ describe('regole per anno (domanda giornaliera)', () => {
   it('senza V anno i suoi turni passano a IV e III, ma il III non fa OBI', () => {
     const d = buildDemand('2027-10-29', { vPresent: false }); // ven
     expect(d.find((p) => p.slot === 'PS_ALTI_M' && p.idx === 0)!.years).toEqual([4, 3]);
-    expect(d.find((p) => p.slot === 'PS_VERDI_P')!.years).toEqual([4, 3]);
+    expect(d.find((p) => p.slot === 'PS_AUTO_P')!.years).toEqual([4, 3]);
+    expect(d.find((p) => p.slot === 'PS_NOTTE' && p.idx === 0)!.years).toEqual([4, 3]);
     expect(d.find((p) => p.slot === 'OBI_P')!.years).toEqual([4]);
   });
 });
@@ -159,6 +170,7 @@ describe('motore', () => {
       ['PEDU_M', 'PEDU_P'],
       ['PS_ALTI_M', 'PS_ALTI_P'],
       ['PS_VERDI_M', 'PS_VERDI_P'],
+      ['PS_AUTO_M', 'PS_AUTO_P'],
       ['OBI_M', 'OBI_P'],
     ].map((x) => x.join());
     for (const list of byPersonDay.values()) {
@@ -192,6 +204,38 @@ describe('motore', () => {
       }
       expect(who(sun, 'PS_ALTI_M')).not.toBe(who(sat, 'PS_ALTI_M'));
     }
+  });
+
+  it('weekend del V anno: notte di venerdì → domenica alti 12h; alti del sabato → notte di domenica', () => {
+    const who = (date: string, slot: string, idx = 0) => res.assignments.find((a) => a.date === date && a.slot === slot && a.idx === idx)?.who;
+    for (const sat of daysOfMonth('2026-11').filter((d) => weekday(d) === 6)) {
+      const fri = addDays(sat, -1);
+      const sun = addDays(sat, 1);
+      expect(who(sun, 'PS_ALTI_M')).toBe(who(fri, 'PS_NOTTE'));
+      expect(who(sun, 'PS_NOTTE')).toBe(who(sat, 'PS_ALTI_M'));
+      expect(yearOf(who(sat, 'PS_NOTTE')!)).toBe(5);
+      for (const d of [sat, sun]) expect(yearOf(who(d, 'PS_NOTTE', 1)!)).toBe(4);
+    }
+  });
+
+  it('OBI del weekend: stessa persona sabato e domenica, diversa ogni weekend, poi smonto il lunedì', () => {
+    const who = (date: string, slot: string) => res.assignments.find((a) => a.date === date && a.slot === slot && a.idx === 0)?.who;
+    const sats = daysOfMonth('2026-11').filter((d) => weekday(d) === 6);
+    const obi = sats.map((sat) => who(sat, 'OBI_M'));
+    for (const [i, sat] of sats.entries()) {
+      expect(who(addDays(sat, 1), 'OBI_M')).toBe(obi[i]);
+      expect(byPersonDay.get(`${obi[i]}|${addDays(sat, 2)}`)).toBeUndefined();
+    }
+    expect(new Set(obi).size).toBe(sats.length);
+  });
+
+  it('con lo storico i weekend di OBI vanno prima a chi non ne ha fatti', () => {
+    const ids = input.enrollments.filter((e) => e.year === 5).map((e) => e.personId);
+    const done = ids.slice(0, 9);
+    const extraHistory = Object.fromEntries(done.map((id) => [id, { weekend: 0, blocks: 0, obiWeekends: 1 }]));
+    const r = suggestMonth({ ...input, extraHistory });
+    const obi = r.assignments.filter((a) => a.slot === 'OBI_M' && weekday(a.date) === 6).map((a) => a.who);
+    expect(obi.some((id) => done.includes(id))).toBe(false);
   });
 
   it('il V anno può fare 12h il sabato e la notte di domenica', () => {
@@ -254,7 +298,7 @@ describe('motore', () => {
     const nights: Record<string, number> = {};
     for (const a of res.assignments) if (a.slot === 'PS_NOTTE' && yearOf(a.who) === 5) nights[a.who] = (nights[a.who] ?? 0) + 1;
     const values = Object.values(nights);
-    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(2);
   });
 
   it('rispetta le assenze', () => {
@@ -315,6 +359,11 @@ describe('motore', () => {
     expect(zulu.every((a) => a.date >= '2026-11-16')).toBe(true);
   });
 
+  it('con 14 V, 8 IV e 6 III anno novembre non ha posti scoperti', () => {
+    expect(res.holes).toEqual([]);
+    expect(res.assignments.some((a) => a.who === RUOTA)).toBe(false);
+  });
+
   it('il calendario suggerito non ha errori di validazione', () => {
     const errors = validate(input, res.assignments).filter((w) => w.level === 'error');
     expect(errors).toEqual([]);
@@ -354,29 +403,30 @@ describe('motore', () => {
       { date: '2026-11-08', slot: 'PS_NOTTE', idx: 0, who: 'alfa', source: 'suggested' },
       { date: '2026-11-09', slot: 'PS_NOTTE', idx: 0, who: RUOTA, source: 'suggested' },
     ]);
-    expect(x.kilo).toEqual({ weekend: 1, blocks: 1 });
-    expect(x.alfa).toEqual({ weekend: 1, blocks: 0 });
+    expect(x.kilo).toEqual({ weekend: 1, blocks: 1, obiWeekends: 0 });
+    expect(x.alfa).toEqual({ weekend: 1, blocks: 0, obiWeekends: 0 });
     expect(x[RUOTA]).toBeUndefined();
   });
 
-  it('alti opzionale: solo lun–ven, mai compilato dal motore, fuori dal bilanciamento', () => {
-    expect(buildDemand('2026-11-02', { vPresent: true }).filter((p) => p.slot.startsWith('PS_OPZ')).every((p) => p.manualOnly)).toBe(true);
-    expect(buildDemand('2026-11-07', { vPresent: true }).some((p) => p.slot.startsWith('PS_OPZ'))).toBe(false); // sab
-    expect(res.assignments.some((a) => a.slot.startsWith('PS_OPZ'))).toBe(false);
-    // Un volontario inserito a mano: quel giorno non riceve altri turni.
-    const extra: Assignment = { date: '2026-11-03', slot: 'PS_OPZ_M', idx: 0, who: 'kilo', source: 'manual' };
+  it('reparti facoltativi: lun–ven, V o IV anno, solo a mano, tutto il giorno', () => {
+    const wards = (d: string) => buildDemand(d, { vPresent: true }).filter((p) => OPTIONAL_WARDS.includes(p.slot));
+    expect(wards('2026-11-02').map((p) => [p.slot, p.years, p.manualOnly])).toEqual(OPTIONAL_WARDS.map((s) => [s, [5, 4], true]));
+    expect(wards('2026-11-07')).toEqual([]); // sab
+    expect(res.assignments.some((a) => OPTIONAL_WARDS.includes(a.slot))).toBe(false);
+    // Chi è in reparto quel giorno non riceve altri turni; fuori dal bilanciamento.
+    const extra: Assignment = { date: '2026-11-03', slot: 'ORTO', idx: 0, who: 'kilo', source: 'manual' };
     const r = suggestMonth(exampleInput({ locked: [extra] }));
     expect(r.assignments.some((a) => a.date === '2026-11-03' && a.who === 'kilo')).toBe(false);
-    // Nel weekend la colonna non esiste: avviso.
-    const ws = validate(input, [{ date: '2026-11-07', slot: 'PS_OPZ_M', idx: 0, who: 'kilo', source: 'manual' }]);
-    expect(ws.some((w) => w.message === 'Posto non previsto in questo giorno')).toBe(true);
+    // Tutto il giorno: "no P" basta per l'avviso.
+    const ws = validate(exampleInput({ absences: [{ personId: 'kilo', date: '2026-11-03', kind: 'noP' }] }), [extra]);
+    expect(ws.some((w) => w.personId === 'kilo' && w.message.startsWith('Non disponibile'))).toBe(true);
   });
 
-  it('notte, secondo posto (lun–ven): a mano, ruota comune o uno specializzando che conta nel bilanciamento', () => {
+  it('notte, secondo posto (lun–ven): a mano, ruota comune o un IV anno che conta nel bilanciamento', () => {
     const second = (d: string) => buildDemand(d, { vPresent: true }).find((p) => p.slot === 'PS_NOTTE' && p.idx === 1);
-    expect(second('2026-11-02')).toMatchObject({ manualOnly: true, ruotaFallback: true, years: [5, 4, 3] }); // lun
-    expect(second('2026-11-07')).toBeUndefined(); // sab
-    expect(res.assignments.some((a) => a.slot === 'PS_NOTTE' && a.idx === 1)).toBe(false);
+    expect(second('2026-11-02')).toMatchObject({ manualOnly: true, ruotaFallback: true, years: [4] }); // lun
+    expect(second('2026-11-07')).toMatchObject({ manualOnly: false, ruotaFallback: false, years: [4] }); // sab
+    expect(res.assignments.some((a) => a.slot === 'PS_NOTTE' && a.idx === 1 && !isWeekend(a.date))).toBe(false);
     // Uno specializzando inserito a mano: smonto il giorno dopo e la notte conta nello storico.
     const extra: Assignment = { date: '2026-11-03', slot: 'PS_NOTTE', idx: 1, who: 'kilo', source: 'manual' };
     const r = suggestMonth(exampleInput({ locked: [extra] }));

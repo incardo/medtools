@@ -4,7 +4,7 @@ import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rul
 import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
 import { RUOTA, isPerson } from './types';
 
-const BALANCED: Family[] = ['PS_ALTI', 'PS_VERDI', 'PS_NOTTE', 'OBI', 'PEDU', 'AMB'];
+const BALANCED: Family[] = ['PS_ALTI', 'PS_AUTO', 'PS_VERDI', 'PS_NOTTE', 'OBI', 'PEDU', 'AMB'];
 
 export const keyOf = (a: { date: string; slot: SlotCode; idx: number }) => `${a.date}|${a.slot}#${a.idx}`;
 
@@ -33,6 +33,11 @@ class Board {
     return this.byDay.get(date)?.get(personId) ?? [];
   }
 
+  /** Ha fatto il posto collegato (`prevDaySlot`, `prevDays` giorni prima). */
+  linked(personId: string, pos: Position): boolean {
+    return !!pos.prevDaySlot && this.slots(personId, addDays(pos.date, -(pos.prevDays ?? 1))).includes(pos.prevDaySlot);
+  }
+
   /** Lavora in PS sia sabato sia domenica prima del lunedì `monday`. */
   psWholeWeekend(personId: string, monday: string): boolean {
     return [addDays(monday, -2), addDays(monday, -1)].every((d) => this.slots(personId, d).some(isPS));
@@ -46,14 +51,21 @@ class Board {
     });
   }
 
-  /** Smonto del weekend (preferenza): lunedì per chi fa PS sab+dom, martedì per Ped Urg 12h sab+dom. */
+  /** OBI 12h sia sabato sia domenica prima del lunedì `monday`. */
+  obiWholeWeekend(personId: string, monday: string): boolean {
+    return [addDays(monday, -2), addDays(monday, -1)].every((d) => this.slots(personId, d).includes('OBI_M'));
+  }
+
+  /** Smonto del weekend (preferenza): lunedì per chi fa PS o OBI sab+dom, martedì per Ped Urg 12h sab+dom. */
   weekendRestDue(personId: string, date: string): boolean {
     const wd = weekday(date);
-    if (wd === 1) return this.psWholeWeekend(personId, date);
+    if (wd === 1) return this.psWholeWeekend(personId, date) || this.obiWholeWeekend(personId, date);
     if (wd === 2) return this.pedu12hWeekend(personId, date);
     return false;
   }
 }
+
+const ZERO = Object.fromEntries(Object.values(SLOT_INFO).map((x) => [x.family, 0])) as Record<Family, number>;
 
 function mulberry32(seed: number) {
   return () => {
@@ -78,15 +90,18 @@ export function countAssignments(assignments: Assignment[]): History {
 
 /** Un blocco Ped Urg inizia con Ped Urg pomeriggio di venerdì. */
 const isBlockStart = (a: { date: string; slot: SlotCode }) => a.slot === 'PEDU_P' && weekday(a.date) === 5;
+/** Un weekend di OBI inizia con OBI mattina di sabato. */
+const isObiWeekendStart = (a: { date: string; slot: SlotCode }) => a.slot === 'OBI_M' && weekday(a.date) === 6;
 
-/** Giorni di sabato/domenica lavorati e blocchi Ped Urg iniziati, per persona (la ruota comune non conta). */
+/** Giorni di sabato/domenica lavorati, blocchi Ped Urg e weekend di OBI iniziati, per persona (la ruota comune non conta). */
 export function countExtras(assignments: Assignment[]): ExtraHistory {
   const days = new Map<string, Set<string>>();
   const out: ExtraHistory = {};
   for (const a of assignments) {
     if (!isPerson(a.who)) continue;
-    const row = (out[a.who] ??= { weekend: 0, blocks: 0 });
+    const row = (out[a.who] ??= { weekend: 0, blocks: 0, obiWeekends: 0 });
     if (isBlockStart(a)) row.blocks++;
+    if (isObiWeekendStart(a)) row.obiWeekends!++;
     if (isWeekend(a.date)) days.set(a.who, (days.get(a.who) ?? new Set()).add(a.date));
   }
   for (const [p, d] of days) out[p].weekend = d.size;
@@ -105,7 +120,7 @@ export const WEIGHTS = {
   weekendRest: 8,
   /** per ogni giorno del blocco Ped Urg in cui la persona non è disponibile */
   blockMissing: 10,
-  /** per ogni blocco Ped Urg già fatto (nella scelta di chi fa il blocco) */
+  /** per ogni blocco Ped Urg o weekend di OBI già fatto (nella scelta di chi fa il blocco) */
   blocks: 50,
 } as const;
 
@@ -115,7 +130,7 @@ export const COST = {
   hole: 1000,
   /** per ogni smonto dopo il weekend non rispettato */
   weekendRest: 15,
-  /** per ogni blocco (Ped Urg, scambio del III anno) spezzato */
+  /** per ogni blocco (Ped Urg, OBI e PS del weekend, scambio del III anno) spezzato */
   brokenLink: 20,
   /** squilibrio dentro ogni anno di corso (varianza): turni totali */
   spreadTotal: 2,
@@ -142,17 +157,20 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
 
   const counts: Record<string, Record<Family, number>> = {};
   const countOf = (p: string) =>
-    (counts[p] ??= { PS_ALTI: 0, PS_OPZ: 0, PS_VERDI: 0, PS_NOTTE: 0, OBI: 0, PEDU: 0, AMB: 0, BAMBI: 0, ...input.history[p] });
+    (counts[p] ??= { ...ZERO, ...input.history[p] });
   const totalOf = (p: string) => BALANCED.reduce((s, f) => s + countOf(p)[f], 0);
   const extra = input.extraHistory ?? {};
   const weekendDays = new Map<string, Set<string>>();
   const weekendOf = (p: string) => (extra[p]?.weekend ?? 0) + (weekendDays.get(p)?.size ?? 0);
   const monthBlocks: Record<string, number> = {};
   const blocksOf = (p: string) => (extra[p]?.blocks ?? 0) + (monthBlocks[p] ?? 0);
+  const monthObi: Record<string, number> = {};
+  const obiWeekendsOf = (p: string) => (extra[p]?.obiWeekends ?? 0) + (monthObi[p] ?? 0);
   const bump = (p: string, slot: SlotCode, date: string) => {
     countOf(p)[SLOT_INFO[slot].family]++;
     if (isWeekend(date)) weekendDays.set(p, (weekendDays.get(p) ?? new Set()).add(date));
     if (isBlockStart({ date, slot })) monthBlocks[p] = (monthBlocks[p] ?? 0) + 1;
+    if (isObiWeekendStart({ date, slot })) monthObi[p] = (monthObi[p] ?? 0) + 1;
   };
   for (const a of input.locked) if (isPerson(a.who)) bump(a.who, a.slot, a.date);
 
@@ -192,23 +210,24 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   };
   const isLocked = (pos: Position) => [pos.slot, ...pos.alsoSlots].some((s) => lockedKeys.has(keyOf({ ...pos, slot: s })));
 
-  // Blocchi Ped Urg del mese decisi per primi (ven P → sab 12h → dom 12h → lun M): ognuno a chi ne ha fatti meno,
-  // così nei giorni feriali il motore sa già chi ha il blocco e gli dà meno Ped Urg.
+  // Blocchi del mese decisi per primi, ognuno a chi ne ha fatti meno: Ped Urg (ven P → sab 12h → dom 12h → lun M),
+  // così nei giorni feriali il motore sa già chi ha il blocco e gli dà meno Ped Urg; OBI del weekend (sab + dom 12h),
+  // a rotazione tra i V anno.
   const planned = new Set<string>();
   const byDate = new Map(demand.map((day) => [day[0].date, day]));
-  for (const day of demand) {
-    const start = day.find((pos) => pos.blockAhead);
-    if (!start || isLocked(start)) continue;
+  for (const start of demand.flatMap((day) => day.filter((pos) => pos.planBlock))) {
+    if (isLocked(start)) continue;
     const people = roster.activeOn(start.date).map((x) => x.person.id);
     const cands = people.filter((p) => canTake(p, start));
     if (!cands.length) continue;
-    const blockScore = (p: string) => blocksOf(p) * WEIGHTS.blocks + score(p, start);
+    const doneOf = start.slot === 'OBI_M' ? obiWeekendsOf : blocksOf;
+    const blockScore = (p: string) => doneOf(p) * WEIGHTS.blocks + score(p, start);
     const who = cands.reduce((a, b) => (blockScore(a) <= blockScore(b) ? a : b));
     const chain = [start];
-    for (let i = 1; i <= 3; i++) {
-      const next = byDate.get(addDays(start.date, i))?.find((pos) => pos.slot === 'PEDU_M' && pos.idx === 0);
+    start.blockAhead!.forEach(([slot], i) => {
+      const next = byDate.get(addDays(start.date, i + 1))?.find((pos) => pos.slot === slot && pos.idx === 0);
       if (next) chain.push(next);
-    }
+    });
     // Se la persona non è disponibile in un giorno, il blocco si ferma lì e il resto lo decide il giro normale.
     for (const pos of chain) {
       if (isLocked(pos) || !canTake(who, pos)) break;
@@ -220,10 +239,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   for (const day of demand) {
     const open = day.filter((pos) => !pos.manualOnly && !isLocked(pos) && !planned.has(keyOf(pos)));
     // Chi il giorno prima faceva il posto collegato (blocco Ped Urg, scambio del weekend).
-    const linkedOf = (pos: Position, cands: string[]) => {
-      const prev = pos.prevDaySlot;
-      return prev ? cands.filter((p) => board.slots(p, addDays(pos.date, -1)).includes(prev)) : [];
-    };
+    const linkedOf = (pos: Position, cands: string[]) => (pos.prevDaySlot ? cands.filter((p) => board.linked(p, pos)) : []);
     // Prima i posti che continuano un blocco del giorno prima, poi quelli con meno candidati
     // (evita di bruciare le persone scarse).
     let pending = open;
@@ -262,7 +278,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   for (const day of demand) {
     for (const pos of day) {
       const who = byKey.get(keyOf(pos));
-      if (pos.prevDaySlot && who && who !== RUOTA && !board.slots(who, addDays(pos.date, -1)).includes(pos.prevDaySlot)) brokenLinks++;
+      if (pos.prevDaySlot && who && who !== RUOTA && !board.linked(who, pos)) brokenLinks++;
     }
   }
   let spread = 0;
@@ -335,7 +351,7 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     // Scelto a mano (es. una sostituzione): si segnala ma non è un errore.
     if (!yearCanCover(year, a.slot))
       w(a.source === 'manual' ? 'warn' : 'error', `Il ${['', '', '', 'III', 'IV', 'V'][year]} anno di norma non copre questo turno`);
-    const why = roster.unavailable(a.who, a.date, SLOT_INFO[a.slot].fascia);
+    const why = roster.unavailableForSlots(a.who, a.date, [a.slot]);
     if (why) w('error', `Non disponibile (${why})`);
     const same = board.slots(a.who, a.date);
     const mine = [...(byPersonDay.get(`${a.who}|${a.date}`) ?? [])].sort().join();

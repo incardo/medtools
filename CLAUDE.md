@@ -46,7 +46,7 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
 
 - Persone e nomi si possono **aggiungere, togliere o modificare in qualsiasi momento**.
 - L'app mostra una **tabella della composizione corrente**: chi c'è oggi in ogni anno di corso (III, IV, V).
-- La composizione caricata nell'app (V 10, IV 8, III 6) è quella **effettiva** e si corregge a mano dalla scheda Persone. **[detto]** Solo i **test** usano nomi fittizi.
+- La composizione caricata nell'app (V anno 14–15 persone, vedi database online) è quella **effettiva** e si corregge a mano dalla scheda Persone. **[detto]** Solo i **test** usano nomi fittizi.
 
 **Gruppo noto per il V anno 2026/27:** Incardona, Somenzi, Cortesia, Serra, più chi rientra (nomi da definire). **[detto]**
 
@@ -75,14 +75,17 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
 
 | Codice | Significato | Note |
 |---|---|---|
-| `PS_ALTI_M` / `PS_ALTI_P` | PS codici alti, mattina / pomeriggio | ogni fascia ha 2 posti alti |
+| `PS_ALTI_M` / `PS_ALTI_P` | PS codici alti, mattina / pomeriggio | 2 posti alti per fascia; venerdì pomeriggio 1 (IV) |
+| `PS_AUTO_M` / `PS_AUTO_P` | PS **autonomo**, mattina / pomeriggio | **V anno**, tutti i giorni (weekend 12h); **obbligatorio** e **conta nel bilanciamento** **[detto]** (06/10/2026) |
 | `PS_VERDI_M` / `PS_VERDI_P` | PS codici bassi ("verdista"), mattina / pomeriggio | 1 posto per fascia |
 | `PS_NOTTE` | PS notte | |
 | `OBI_M` / `OBI_P` | Osservazione breve, mattina / pomeriggio | |
 | `PEDU_M` / `PEDU_P` | Pediatria Urgenza, mattina / pomeriggio | mattina feriale: **2 posti** (un IV e un III anno); pomeriggio: 1 posto (IV); weekend: un IV per 12h |
-| `PS_OPZ_M` / `PS_OPZ_P` | PS alti **opzionale**, mattina / pomeriggio | solo **lun–ven**; chiunque (III, IV, V); **solo a mano**, il motore non lo riempie; per chi vuole fare turni in più; **fuori dal bilanciamento e dal totale**, ma visibile in Panoramica ("Alti opz.") ed Excel; valgono le regole trasversali **[detto]** (29/09/2026) |
 | `BAMBI` | Bambi | **facoltativo**: può restare scoperto; si assegna solo a chi è interessato; **non entra nel bilanciamento** **[detto]** |
 | `AMB` | Ambulatorio | coperto dal **III anno** **[detto]** |
+| `ORTO` / `RADIO` / `ANEST` / `CHIR` | Ortopedia, Radiologia, Anestesia, Chirurgia | **facoltativi**, **lun–ven**, tutto il giorno (senza mattina/pomeriggio); **V o IV anno**; **solo a mano**; **fuori dal bilanciamento e dal totale**; chi è in reparto quel giorno non riceve altri turni **[detto]** (06/10/2026) |
+
+L'**alti opzionale** (`PS_OPZ`) è stato **tolto** il 06/10/2026 **[detto]**: le celle già salvate restano nel database ma l'app non le mostra né le conta.
 
 Fasce per la disponibilità: `mattina`, `pomeriggio`, `notte` (3 righe per giorno).
 
@@ -95,31 +98,28 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 ### IV anno **[detto]**
 
 - Ped Urg mattina **e** pomeriggio, **tutti i giorni**.
-- OBI mattina il **lunedì**.
-- **Notte** il **giovedì** e il **sabato**, con smonto.
-- **Un turno** PS codici bassi (mattina) il **lunedì, mercoledì, venerdì**.
-- **Un turno** PS codici alti (mattina) il **martedì e giovedì**.
-- **Un turno** PS codici alti (pomeriggio) il **lunedì, mercoledì, venerdì**.
-- **Un turno** PS codici bassi (pomeriggio) il **martedì e giovedì**.
+- **Notte**: il **secondo posto** il **sabato e la domenica** (scelto dal motore), con smonto; dal lunedì al venerdì il secondo posto lo può fare a mano un IV anno (vedi "Ruota comune"). **[detto]** (06/10/2026) Non fa più la notte del giovedì né l'OBI del lunedì.
+- PS **lunedì, mercoledì, venerdì**: mattina **verdi**, pomeriggio **alti**.
+- PS **martedì e giovedì**: mattina **alti**, pomeriggio **verdi**.
 - Nel weekend Ped Urg è coperto da **un solo specializzando** per mattina e pomeriggio insieme.
 - **Blocco Ped Urg**: la stessa persona copre Ped Urg dal **venerdì pomeriggio** al **lunedì mattina** (ven P, sab 12h, dom 12h, lun M), poi smonto, di preferenza il martedì (non obbligatorio). **[detto]** È una **preferenza forte**: se la persona non è disponibile in uno dei giorni, il blocco si spezza invece di lasciare il posto scoperto; nessun avviso se si spezza a mano. I blocchi **ruotano in automatico** tra i IV anno grazie al riequilibrio. **[detto]**
 
-### V anno **[detto]**
+### V anno **[detto]** (riscritte il 06/10/2026)
 
-- PS alti mattina (1 turno) e PS alti pomeriggio (1 turno); nel weekend un'unica persona per 12h, diversa tra sabato e domenica (vedi "Weekend in PS").
-- **Lunedì e venerdì pomeriggio** PS **bassi** (verdi) al posto degli alti. **[detto]**
-- OBI mattina **e** pomeriggio, **anche nel weekend**. **[detto]** Nel weekend l'OBI lo copre **una sola persona per 12h** (mattina + pomeriggio). **[detto]**
-- **5 notti PS a settimana** coperte dal V anno come gruppo: domenica, lunedì, martedì, mercoledì, venerdì (giovedì e sabato le fa il IV anno). Il motore le distribuisce in modo **bilanciato** tra le persone del V anno; non c'è un tetto per persona. **[detto]** (chiarito il 29/09/2026)
+- Organico: **14–15 persone**.
+- PS **tutti i giorni**, mattina e pomeriggio: **uno agli alti** e **uno autonomo** (`PS_AUTO`, conta nel bilanciamento). Nel weekend entrambi 12h.
+- **Venerdì mattina**: **tre** V anno, due agli alti e uno autonomo. **Venerdì pomeriggio**: solo l'**autonomo** (alti al IV, verdi al III).
+- **OBI** mattina **e** pomeriggio, solo V anno, anche il lunedì. Nel **weekend** l'OBI lo copre **la stessa persona sabato e domenica** (12h al giorno), con **smonto il lunedì**; i weekend di OBI **ruotano** tra i V anno, così ogni weekend c'è una persona diversa nei vari mesi (va prima a chi ne ha fatti meno nell'anno).
+- **Notti**: **tutte le notti** (lun–dom) c'è un V anno, distribuite in modo **bilanciato**.
+- **Weekend in PS** (alti 12h): chi fa la **notte di venerdì** fa la **domenica** tutto il giorno; chi fa il **sabato** di giorno fa la **notte di domenica**; la **notte di sabato** ruota tra i V anno. Nel motore sono preferenze forti: se la persona non è disponibile, il posto va a un altro V anno.
 - A fine anno (ultimi giorni di ottobre) non c'è più: i suoi turni li coprono IV e III anno.
 - Eventuali giorni d'esame (es. 5 ottobre 2026) sono **parametri del mese**, non regole fisse (vedi sezione 8).
 
 ### III anno **[detto]**
 
-- PS alti (mattina e pomeriggio) lunedì e venerdì.
-- PS bassi (mattina) martedi e giovedì.
-- PS alti (pomeriggio) martedi e giovedì.
-- PS alti (mattina) mercoledi.
-- PS bassi (pomeriggio) mercoledi.
+- PS **lunedì e mercoledì**: mattina **alti**, pomeriggio **verdi**. **[detto]** (06/10/2026)
+- PS **martedì e giovedì**: mattina **verdi**, pomeriggio **alti**.
+- PS **venerdì pomeriggio**: **verdi** (il venerdì mattina c'è l'ambulatorio).
 - PS nel weekend: una persona agli **alti per 12h** (mattina + pomeriggio) e una ai **verdi per 12h**; la **domenica si scambiano** (chi sabato era agli alti va ai verdi e viceversa). **[detto]**
 - **Ambulatorio** solo il **giovedì e venerdì**; gli altri giorni non serve copertura. **[detto]**
 - **Ped Urg mattina**, insieme a un IV anno (secondo posto di Ped Urg mattina) tutti i giorni tranne i wekkend. **[detto]**
@@ -127,28 +127,35 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 
 ### Weekend in PS **[detto]**
 
-- PS codici alti: **V anno** e **un III anno**.
-- Il V anno fa gli alti **12h**: la stessa persona copre mattina e pomeriggio. La **domenica** lo sostituisce **un altro V anno** (mai la stessa persona del sabato). **[detto]**
+- PS codici alti: **V anno** e **un III anno**; più l'**autonomo** del V anno.
+- Il V anno fa gli alti **12h**: la stessa persona copre mattina e pomeriggio. La **domenica** lo sostituisce **un altro V anno** (mai la stessa persona del sabato): chi ha fatto la notte di venerdì. Chi fa il sabato fa la notte di domenica. **[detto]**
 - PS codici bassi (verdi): **un III anno**.
 - I due III anno fanno 12h ciascuno (alti e verdi) e la domenica si scambiano. **[detto]** Nel motore lo scambio è una preferenza: se uno dei due non è disponibile la domenica, il posto va a un altro III anno.
 
-### PS feriale: schema risultante
+### PS feriale: schema risultante (06/10/2026)
 
-| | Mattina: alti | Mattina: verdi | Pomeriggio: alti | Pomeriggio: verdi |
-|---|---|---|---|---|
-| Lun | V + III | IV | IV + III | V |
-| Mar | V + IV | III | V + III | IV |
-| Mer | V + III | IV | V + IV | III |
-| Gio | V + IV | III | V + III | IV |
-| Ven | V + III | IV | IV + III | V |
+| | Mattina: alti | Mattina: verdi | Mattina: autonomo | Pomeriggio: alti | Pomeriggio: verdi | Pomeriggio: autonomo |
+|---|---|---|---|---|---|---|
+| Lun | V + III | IV | V | V + IV | III | V |
+| Mar | V + IV | III | V | V + III | IV | V |
+| Mer | V + III | IV | V | V + IV | III | V |
+| Gio | V + IV | III | V | V + III | IV | V |
+| Ven | V + V | IV | V | IV | III | V |
 
-Ogni posto PS feriale ha un anno di corso; in più c'è l'**alti opzionale** (mattina e pomeriggio, lun–ven), compilato a mano da volontari. In codice: `PS_FERIALE` in `packages/engine/src/rules.ts`.
+Ogni posto PS feriale ha un anno di corso. In codice: `PS_FERIALE` in `packages/engine/src/rules.ts`.
+
+### Notti
+
+| | Posto 1 | Posto 2 |
+|---|---|---|
+| Lun–Ven | V anno | a mano: ruota comune oppure un IV anno |
+| Sab–Dom | V anno | IV anno, scelto dal motore |
 
 ### Vincoli per gruppo **[detto]**
 
 III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
 
-- III anno **non** può coprire **Ped Urg al pomeriggio**, né OBI. Può invece coprire il PS al pomeriggio (es. nel weekend). **[detto]** 
+- III anno **non** può coprire **Ped Urg al pomeriggio**, né OBI, né i reparti facoltativi. Può invece coprire il PS al pomeriggio (es. nel weekend). **[detto]** 
 - V anno: nessuna restrizione (finché è presente).
 
 ### Ruota comune **[detto]**
@@ -157,8 +164,8 @@ III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
 - Ruota comune copre **solo le notti in PS dal lunedì al venerdì**. **[detto]** (sostituisce la regola precedente "non può coprire Ped Urg né OBI")
 - Nel motore è il ripiego per le notti lun–ven quando nessuno dell'anno previsto è disponibile. **[assunzione]**
 - La ruota comune **non entra** nel bilanciamento né nella panoramica per medico. **[detto]**
-- Nel calendario, accanto a "Notte PS", c'è una colonna **"Ruota comune / altro"** (secondo posto di notte, solo lun–ven, solo a mano): si sceglie **la ruota comune** (e si scrive il nome, testo libero) **oppure un altro specializzando disponibile**, di qualsiasi anno, perché la ruota comune potrebbe non coprire tutte le notti. **[detto]** (29/09/2026)
-- Uno specializzando nel secondo posto di notte **conta come una notte**: nella panoramica e nel **bilanciamento** (il motore lo legge come turno manuale). Valgono le regole trasversali (smonto dopo la notte, un turno al giorno). **[detto]** In codice: slot `PS_NOTTE` con `idx` 1, `manualOnly`; il nome della ruota comune resta in `ruotaNames`.
+- Nel calendario, accanto a "Notte PS", c'è una colonna **"Ruota comune / IV"** (secondo posto di notte). Dal lunedì al venerdì è **solo a mano**: si sceglie **la ruota comune** (e si scrive il nome, testo libero) **oppure un IV anno**. **[detto]** (06/10/2026) Il sabato e la domenica lo riempie il motore con un IV anno.
+- Uno specializzando nel secondo posto di notte **conta come una notte**: nella panoramica e nel **bilanciamento** (il motore lo legge come turno manuale). Valgono le regole trasversali (smonto dopo la notte, un turno al giorno). **[detto]** In codice: slot `PS_NOTTE` con `idx` 1 (`manualOnly` lun–ven); il nome della ruota comune resta in `ruotaNames`.
 
 ---
 
@@ -170,10 +177,11 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
 2. Chi fa la **notte** non lavora né il giorno stesso né il giorno dopo.
 3. **Smonto dopo il weekend**, **dove possibile** (preferenza, non vincolo assoluto): **[detto]**
    - chi lavora in **PS sia sabato sia domenica** non lavora il **lunedì**;
+   - chi fa **OBI sia sabato sia domenica** non lavora il **lunedì** **[detto]** (06/10/2026);
    - chi fa **Ped Urg 12 ore (mattina + pomeriggio) sia sabato sia domenica** non lavora il **martedì**.
 4. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
 5. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
-6. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026)
+6. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026) Lo stesso per i **weekend di OBI** del V anno (06/10/2026).
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
@@ -195,6 +203,8 @@ Scheda Disponibilità (29/09/2026) **[detto]**:
 
 - **Pennello** per inserire più giorni insieme: si sceglie un tipo (o "cancella") e si trascina sulla riga di una persona; il trascinamento resta sulla riga dove è iniziato. Con "Menu" il clic apre il menu come prima.
 - **Riga "assenti" per ogni anno di corso**: per ogni giorno, quante persone di quell'anno sono assenti tutto il giorno (ferie, indisponibili, esami), più "+N" per chi è assente solo in parte. Colore: **giallo** = nessun margine, **rosso** = non bastano. Il confronto è con una stima delle persone che servono: i posti che le regole danno a quell'anno quel giorno (un 12h = una persona), più chi smonta dalla notte del giorno prima. Il dettaglio con i nomi è nel tooltip della cella.
+
+**Limiti** (06/10/2026) **[detto]**: le indisponibilità si comunicano **entro il 15 del mese precedente**; al massimo **2 X nel weekend** e **8 X nei giorni feriali** per persona nel mese. Contano solo le **X** (giorno intero): ferie e indisponibilità parziali no. Oltre il limite, o dopo la scadenza, la scheda Disponibilità mostra un **avviso** (non blocca). Valori in `ABSENCE_LIMITS` (`packages/engine/src/types.ts`).
 
 I dati di assenza del vecchio file Excel **non si considerano**. **[detto]**
 
@@ -265,11 +275,13 @@ Risolti il 28/09/2026 (due giri): Bambi/Ambulatorio, 12h e smonto, weekend PS, s
 
 Risolti il 28/09/2026 (terzo giro): posti PS feriali senza anno (ora c'è lo schema completo), V anno ai verdi lun/ven pomeriggio, ambulatorio solo gio/ven, OBI del V anno anche nel weekend.
 
-**Organico di riferimento** (composizione iniziale e test): V anno 10, IV anno 8, III anno 6. **[detto]** Con questi numeri novembre 2026 non ha posti scoperti e la ruota comune non serve.
+**Organico di riferimento** (test): V anno 14, IV anno 8, III anno 6. **[detto]** (06/10/2026: il V anno sarà di 14–15 persone) Con questi numeri novembre 2026 non ha posti scoperti e la ruota comune non serve. Ogni giorno feriale il V anno impegna 8 persone (6 di giorno, 1 di notte, 1 in smonto).
 
 Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h verdi, scambio la domenica), OBI di fine ottobre solo al IV anno.
 
-Risolto il 29/09/2026: le "5 notti" del V anno sono **5 notti a settimana** coperte dal gruppo (dom, lun, mar, mer, ven), non un tetto per persona.
+Risolto il 29/09/2026: le "5 notti" del V anno sono **5 notti a settimana** coperte dal gruppo (dom, lun, mar, mer, ven), non un tetto per persona. **Superato il 06/10/2026**: ora il V anno copre tutte le notti.
+
+Risolti il 06/10/2026: autonomo del V anno anche nel weekend; OBI del weekend alla stessa persona con smonto il lunedì; OBI del lunedì al V anno; secondo posto di notte lun–ven resta a mano; Ped Urg mattina del III anno resta; avvisi (non blocchi) per limiti e scadenza delle indisponibilità; reparti facoltativi solo lun–ven, tutto il giorno, fuori dal bilanciamento; alti opzionale tolto.
 
 Aperti: nessuno. Restano le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
 
@@ -350,7 +362,7 @@ medtools/
 ### Stato (prototipo, 28/09/2026)
 
 - `packages/engine`: motore TS con test (`npm test`). Regole in `src/rules.ts` (`buildDemand`), assegnazione in `src/engine.ts` (`suggestMonth`, `validate`).
-  - **Come assegna** (29/09/2026): (1) per ogni venerdì del mese decide prima il **blocco Ped Urg** (ven P → sab 12h → dom 12h → lun M) a chi ne ha fatti meno nell'anno (storico in `extraHistory`), fermandosi al primo giorno in cui la persona non è disponibile; (2) poi giorno per giorno, prima i posti collegati al giorno prima, poi quelli con meno candidati; (3) per ogni posto sceglie il punteggio più basso (`WEIGHTS`: turni dello stesso tipo, totale, **giorni di weekend** per i posti di sab/dom, smonto, disponibilità nel blocco); (4) ripete **`RUNS` = 200** tentativi e tiene quello con il costo più basso (`COST`: buchi, smonti, blocchi spezzati, varianza per anno di corso su totale, weekend e ogni tipo).
+  - **Come assegna** (29/09/2026): (1) decide prima i blocchi (`planBlock`): per ogni venerdì il **blocco Ped Urg** (ven P → sab 12h → dom 12h → lun M) e per ogni sabato l'**OBI del weekend** (sab + dom), a chi ne ha fatti meno nell'anno (storico in `extraHistory`: `blocks`, `obiWeekends`), fermandosi al primo giorno in cui la persona non è disponibile; (2) poi giorno per giorno, prima i posti collegati al giorno prima, poi quelli con meno candidati; (3) per ogni posto sceglie il punteggio più basso (`WEIGHTS`: turni dello stesso tipo, totale, **giorni di weekend** per i posti di sab/dom, smonto, disponibilità nel blocco); (4) ripete **`RUNS` = 200** tentativi e tiene quello con il costo più basso (`COST`: buchi, smonti, blocchi spezzati, varianza per anno di corso su totale, weekend e ogni tipo).
   - Giorni di weekend e blocchi dei mesi precedenti: `countExtras` → `extraHistory` (in `apps/web/src/store.ts`, `engineInput`).
   - Prestazioni: `addDays`, `weekday` e `yearOf` sono memorizzati (cache); 200 tentativi ≈ 3 s nel browser.
   - Ogni clic su "Genera suggerimenti" usa un seme casuale diverso: il risultato cambia ma resta ugualmente equilibrato.
@@ -373,7 +385,7 @@ medtools/
   Il riquadro ha uno sfondo azzurro e tre righe: **Giorni con i miei turni**, **Sommario per tipologia turni**, **Le mie assenze**. **[detto]** (03/10/2026)
 - Grafica (03/10/2026): **oggi** evidenziato (pallino nel Calendario, colonna in Disponibilità); sopra la griglia, **elenco di errori e avvisi** che porta alla cella con un clic; sul telefono la tabella scorre nel suo riquadro, così intestazione e giorni restano fissi. Caratteri, angoli e ombre usano le variabili in `:root` di `apps/web/src/styles.css` (`--fs-*`, `--radius*`, `--shadow*`): usare quelle invece di numeri nuovi.
 - Calendario: le celle vuote hanno già il colore dell'anno previsto dalla regola; quando si assegna una persona prendono il colore del suo anno.
-- Panoramica (e foglio "Riepilogo" dell'Excel): colonne per tipo di turno; in PS mattina e pomeriggio sono **equivalenti** e si contano insieme (restano separati alti, verdi e notte) **[detto]**; OBI e Ped Urg in un'unica colonna ciascuno (mattina + pomeriggio) **[detto]**; più Totale (senza Bambi), Weekend (giorni di sab/dom lavorati) e Assenze. Un turno da 12h conta come **due turni**. **[detto]** Interruttore Mese / Anno fino al mese scelto; righe raggruppate per anno di corso con la media; celle colorate se lo scarto dalla media del proprio anno è di almeno 1 turno; "·" per i turni non previsti per quell'anno. Colonne e conteggi in `apps/web/src/summary.ts`.
+- Panoramica (e foglio "Riepilogo" dell'Excel): colonne per tipo di turno; in PS mattina e pomeriggio sono **equivalenti** e si contano insieme (restano separati alti, verdi, autonomo e notte) **[detto]**; OBI e Ped Urg in un'unica colonna ciascuno (mattina + pomeriggio) **[detto]**; colonne dei reparti facoltativi (fuori dal totale); più Totale (senza Bambi e reparti), Weekend (giorni di sab/dom lavorati) e Assenze. Un turno da 12h conta come **due turni**. **[detto]** Interruttore Mese / Anno fino al mese scelto; righe raggruppate per anno di corso con la media; celle colorate se lo scarto dalla media del proprio anno è di almeno 1 turno; "·" per i turni non previsti per quell'anno. Colonne e conteggi in `apps/web/src/summary.ts`.
 
 ---
 

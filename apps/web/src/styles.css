@@ -1037,3 +1037,13 @@ td.strong {
 .cal .flash {
   animation: flash 1.6s ease-out;
 }
+
+/* Disponibilità: persona oltre il limite di X nel mese */
+section > p.banner {
+  border-radius: var(--radius-sm);
+  margin: 0 0 8px;
+}
+.avail .over-mark {
+  color: var(--err);
+  font-weight: 600;
+}

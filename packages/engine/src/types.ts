@@ -3,9 +3,9 @@ export type Year = 3 | 4 | 5;
 export type SlotCode =
   | 'PS_ALTI_M'
   | 'PS_ALTI_P'
-  /** PS alti opzionale (lun–ven): solo a mano, per chi vuole fare un turno in più. */
-  | 'PS_OPZ_M'
-  | 'PS_OPZ_P'
+  /** PS autonomo del V anno: mattina e pomeriggio, tutti i giorni. */
+  | 'PS_AUTO_M'
+  | 'PS_AUTO_P'
   | 'PS_VERDI_M'
   | 'PS_VERDI_P'
   | 'PS_NOTTE'
@@ -14,10 +14,15 @@ export type SlotCode =
   | 'PEDU_M'
   | 'PEDU_P'
   | 'BAMBI'
-  | 'AMB';
+  | 'AMB'
+  /** Reparti facoltativi (lun–ven, tutto il giorno): V o IV anno, solo a mano, fuori dal bilanciamento. */
+  | 'ORTO'
+  | 'RADIO'
+  | 'ANEST'
+  | 'CHIR';
 
 /** Famiglia di turno usata per il bilanciamento e la panoramica. */
-export type Family = 'PS_ALTI' | 'PS_OPZ' | 'PS_VERDI' | 'PS_NOTTE' | 'OBI' | 'PEDU' | 'AMB' | 'BAMBI';
+export type Family = 'PS_ALTI' | 'PS_AUTO' | 'PS_VERDI' | 'PS_NOTTE' | 'OBI' | 'PEDU' | 'AMB' | 'BAMBI' | 'ORTO' | 'RADIO' | 'ANEST' | 'CHIR';
 
 export type Fascia = 'M' | 'P' | 'N';
 
@@ -46,6 +51,12 @@ export const ABSENCE_INFO: Record<AbsenceKind, { short: string; label: string }>
   soloP: { short: 'solo P', label: 'solo pomeriggio' },
   soloN: { short: 'solo N', label: 'solo notte' },
 };
+
+/**
+ * Limiti alle indisponibilità (solo X, giorno intero) per persona e mese, e giorno del mese precedente entro cui
+ * comunicarle. Superarli dà un avviso, non un blocco.
+ */
+export const ABSENCE_LIMITS = { weekendX: 2, weekdayX: 8, deadlineDay: 15 } as const;
 
 /** Etichetta generica: persone a caso, non in anagrafica. */
 export const RUOTA = 'RUOTA_COMUNE';
@@ -113,8 +124,12 @@ export interface Position {
   alsoSlots: SlotCode[];
   /** Preferenza: chi il giorno prima ha fatto questo slot (scambio alti/verdi del III anno nel weekend). */
   prevDaySlot?: SlotCode;
+  /** Quanti giorni prima guardare per `prevDaySlot` (default 1; 2 = venerdì notte → domenica PS del V anno). */
+  prevDays?: number;
   /** Giorni successivi dello stesso blocco (Ped Urg ven P → lun M): si preferisce chi è disponibile per tutti. */
   blockAhead?: SlotCode[][];
+  /** Il blocco si decide prima del giro giorno per giorno, a chi ne ha fatti meno (Ped Urg ven → lun, OBI sab + dom). */
+  planBlock?: boolean;
   /** Vincolo: non chi il giorno prima ha fatto questo stesso slot (V anno agli alti nel weekend). */
   notPrevDay?: boolean;
   /** Anni di corso che possono coprirlo secondo le regole. */
@@ -128,8 +143,11 @@ export interface Position {
 
 export type History = Record<string, Partial<Record<Family, number>>>;
 
-/** Altri conteggi per il bilanciamento: giorni di weekend lavorati e blocchi Ped Urg (ven P → lun M) iniziati. */
-export type ExtraHistory = Record<string, { weekend: number; blocks: number }>;
+/**
+ * Altri conteggi per il bilanciamento: giorni di weekend lavorati, blocchi Ped Urg (ven P → lun M) iniziati
+ * e weekend di OBI (sab + dom) del V anno.
+ */
+export type ExtraHistory = Record<string, { weekend: number; blocks: number; obiWeekends?: number }>;
 
 export interface EngineInput {
   month: string;

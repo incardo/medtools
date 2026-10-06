@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import {
   ABSENCE_BLOCKS,
   ABSENCE_INFO,
+  ABSENCE_LIMITS,
+  OPTIONAL_WARDS,
   COLUMNS,
   COST,
   RUNS,
@@ -39,14 +41,18 @@ function notes(pos: Position): string[] {
   // Posti compilati solo a mano: il motore non li riempie.
   if (pos.manualOnly) {
     if (pos.slot === 'BAMBI') return ['a mano, solo interessati', 'fuori bilanciamento'];
-    if (pos.slot.startsWith('PS_OPZ')) return ['a mano, volontari', 'fuori bilanciamento'];
-    if (pos.slot === 'PS_NOTTE') return ['a mano: ruota comune', 'o altro specializzando', '(conta come notte)'];
+    if (OPTIONAL_WARDS.includes(pos.slot)) return ['a mano, tutto il giorno', 'fuori bilanciamento'];
+    if (pos.slot === 'PS_NOTTE') return ['a mano: ruota comune', 'o un IV anno', '(conta come notte)'];
     return ['a mano'];
   }
   const out: string[] = [];
   if (pos.alsoSlots.length) out.push('12h');
-  if (pos.blockAhead) out.push('inizio blocco');
-  else if (pos.prevDaySlot?.startsWith('PEDU')) out.push('blocco');
+  if (pos.planBlock) out.push(pos.slot === 'OBI_M' ? 'weekend OBI: anche dom' : 'inizio blocco');
+  else if (pos.slot === 'PS_NOTTE' && pos.blockAhead) out.push('→ dom alti 12h');
+  else if (pos.slot === 'PS_ALTI_M' && pos.blockAhead) out.push('→ notte di dom');
+  if (pos.prevDaySlot?.startsWith('PEDU') || pos.prevDaySlot === 'OBI_M') out.push('come sabato');
+  else if (pos.prevDaySlot === 'PS_NOTTE') out.push('chi ha fatto la notte di ven');
+  else if (pos.slot === 'PS_NOTTE' && pos.prevDaySlot) out.push('chi ha fatto gli alti sab');
   else if (pos.prevDaySlot) out.push('scambio col sabato');
   if (pos.notPrevDay) out.push('≠ sabato');
   if (pos.ruotaFallback) out.push('se nessuno: ruota comune');
@@ -138,7 +144,8 @@ export function RulesView({ data, month }: ViewProps) {
       </div>
       <ul className="rules-list">
         <li>
-          <b>12h</b>: nel weekend la stessa persona copre mattina e pomeriggio (PS alti del V anno, PS del III anno, OBI, Ped Urg).
+          <b>12h</b>: nel weekend la stessa persona copre mattina e pomeriggio (PS alti e autonomo del V anno, PS del III anno, OBI, Ped
+          Urg).
         </li>
         <li>
           <b>Blocco Ped Urg</b> del IV anno: la stessa persona da venerdì pomeriggio a lunedì mattina (ven P, sab 12h, dom 12h, lun M). Se non
@@ -149,21 +156,28 @@ export function RulesView({ data, month }: ViewProps) {
           altro III anno).
         </li>
         <li>
-          <b>V anno agli alti nel weekend</b>: la domenica sempre una persona diversa dal sabato.
+          <b>V anno in PS</b>: ogni giorno, mattina e pomeriggio, uno agli <b>alti</b> e uno <b>autonomo</b> (colonna obbligatoria, conta nel
+          bilanciamento). Il venerdì mattina tre V anno (due agli alti e uno autonomo); il venerdì pomeriggio solo l'autonomo (alti al IV,
+          verdi al III).
         </li>
         <li>
-          <b>Notti in PS</b>: il V anno copre <b>5 notti a settimana</b> (domenica, lunedì, martedì, mercoledì, venerdì), bilanciate tra le
-          persone del V anno; il IV anno il giovedì e il sabato. Se nessuno è disponibile, lun–ven va la <b>ruota comune</b>.
+          <b>Weekend del V anno</b>: chi fa la <b>notte di venerdì</b> fa la <b>domenica gli alti 12h</b>; chi fa gli <b>alti 12h il sabato</b>{' '}
+          fa la <b>notte di domenica</b>; la notte di sabato ruota tra i V anno. Sono preferenze forti: se la persona non è disponibile, il
+          posto va a un altro V anno. La domenica agli alti c'è sempre una persona diversa dal sabato.
         </li>
         <li>
-          <b>Secondo posto di notte</b> (lun–ven), a mano: la <b>ruota comune</b> (si scrive il nome) oppure <b>un altro specializzando</b>{' '}
-          disponibile, per le notti che la ruota comune non riesce a coprire. Uno specializzando in questo posto conta come una notte, nella
-          panoramica e nel bilanciamento, e valgono per lui le regole per tutti (smonto compreso).
+          <b>OBI del weekend</b>: la stessa persona sabato e domenica (12h), poi smonto il lunedì. I weekend di OBI ruotano tra i V anno: va
+          prima a chi ne ha fatti meno nell'anno.
         </li>
         <li>
-          <b>PS alti (opz.)</b>, mattina e pomeriggio dal lunedì al venerdì: un posto in più per chi vuole fare qualche turno extra. Si compila
-          a mano, lo può prendere chiunque, il motore non lo riempie e non entra nel bilanciamento né nel totale. Valgono comunque le regole
-          per tutti (un turno al giorno, smonto dopo la notte, indisponibilità).
+          <b>Notti in PS</b>: tutte le notti un <b>V anno</b>, bilanciate tra le persone del V anno. Il secondo posto: sabato e domenica un{' '}
+          <b>IV anno</b>, scelto dal motore; dal lunedì al venerdì a mano, la <b>ruota comune</b> (si scrive il nome) oppure un{' '}
+          <b>IV anno</b>. Uno specializzando nel secondo posto conta come una notte, nella panoramica e nel bilanciamento, e valgono per lui
+          le regole per tutti (smonto compreso). Se nessun V anno è disponibile, lun–ven va la ruota comune.
+        </li>
+        <li>
+          <b>Reparti facoltativi</b> (Ortopedia, Radiologia, Anestesia, Chirurgia), dal lunedì al venerdì, tutto il giorno: V o IV anno, a
+          mano. Il motore non li riempie e non entrano nel bilanciamento né nel totale; chi è in reparto quel giorno non riceve altri turni.
         </li>
         <li>
           <b>Bambi</b> è facoltativo: si assegna a mano, solo a chi è interessato, e non entra nel bilanciamento.
@@ -194,13 +208,13 @@ export function RulesView({ data, month }: ViewProps) {
           Chi fa la <b>notte</b> non lavora né il giorno stesso né il giorno dopo.
         </li>
         <li>
-          <b>Smonto dopo il weekend</b>, dove possibile: chi lavora in PS sabato e domenica non lavora il lunedì; chi fa Ped Urg 12h sabato e
-          domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto.
+          <b>Smonto dopo il weekend</b>, dove possibile: chi lavora in PS o in OBI sabato e domenica non lavora il lunedì; chi fa Ped Urg 12h
+          sabato e domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto.
         </li>
         <li>Un V anno che fa 12h il sabato può fare la notte della domenica.</li>
         <li>Nessuno riceve turni nei giorni in cui non è attivo (prima dell'ingresso o dopo l'uscita).</li>
         <li>
-          I turni scritti a mano non vengono mai toccati dal motore e <b>contano nel bilanciamento</b> (tranne Bambi e alti opzionali). Il
+          I turni scritti a mano non vengono mai toccati dal motore e <b>contano nel bilanciamento</b> (tranne Bambi e reparti facoltativi). Il
           motore ne tiene conto anche per le regole sopra: per esempio chi è inserito a mano di notte ha lo smonto il giorno dopo.
         </li>
         <li>
@@ -231,14 +245,20 @@ export function RulesView({ data, month }: ViewProps) {
         </tbody>
       </table>
       <p className="hint">
+        Si comunicano <b>entro il {ABSENCE_LIMITS.deadlineDay} del mese precedente</b>. Al massimo <b>{ABSENCE_LIMITS.weekendX} X nel
+        weekend</b> e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (ferie e indisponibilità parziali non
+        contano): oltre il limite la scheda Disponibilità dà un avviso.
+      </p>
+      <p className="hint">
         Gli <b>esami</b> (scheda Parametri) rendono indisponibile un intero anno di corso per tutto il giorno o solo per la notte.
       </p>
 
       <h3>Come sceglie il motore</h3>
       <ol className="rules-list">
         <li>
-          <b>Blocchi Ped Urg per primi.</b> Per ogni venerdì del mese sceglie chi fa il blocco: prima chi ne ha fatti meno nell'anno, poi chi è
-          disponibile in tutti i giorni del blocco e ha meno turni. Così nei giorni feriali sa già chi ha il blocco e gli dà meno Ped Urg.
+          <b>Blocchi per primi.</b> Per ogni venerdì del mese sceglie chi fa il blocco Ped Urg, e per ogni sabato chi fa l'OBI del weekend:
+          prima chi ne ha fatti meno nell'anno, poi chi è disponibile in tutti i giorni del blocco e ha meno turni. Così nei giorni feriali
+          sa già chi ha il blocco e gli dà meno Ped Urg.
         </li>
         <li>
           <b>Poi giorno per giorno.</b> Prima i posti che continuano un blocco o lo scambio del III anno, poi quelli con meno persone possibili
@@ -250,7 +270,7 @@ export function RulesView({ data, month }: ViewProps) {
             <tbody>
               <tr>
                 <td>+{WEIGHTS.family}</td>
-                <td>per ogni turno dello stesso tipo già fatto (PS alti, PS verdi, notti, OBI, Ped Urg, Amb; non Bambi né alti opzionali)</td>
+                <td>per ogni turno dello stesso tipo già fatto (PS alti, autonomo, verdi, notti, OBI, Ped Urg, Amb; non Bambi né reparti)</td>
               </tr>
               <tr>
                 <td>+{WEIGHTS.total}</td>
@@ -266,11 +286,11 @@ export function RulesView({ data, month }: ViewProps) {
               </tr>
               <tr>
                 <td>+{WEIGHTS.blockMissing}</td>
-                <td>per ogni giorno del blocco Ped Urg in cui la persona non è disponibile</td>
+                <td>per ogni giorno collegato (blocco Ped Urg, OBI e PS del weekend) in cui la persona non è disponibile</td>
               </tr>
               <tr>
                 <td>+{WEIGHTS.blocks}</td>
-                <td>per ogni blocco Ped Urg già fatto (solo nella scelta di chi fa il blocco)</td>
+                <td>per ogni blocco Ped Urg o weekend di OBI già fatto (solo nella scelta di chi fa il blocco)</td>
               </tr>
               <tr>
                 <td>+0–1,5</td>
@@ -289,7 +309,7 @@ export function RulesView({ data, month }: ViewProps) {
               </tr>
               <tr>
                 <td>{COST.brokenLink}</td>
-                <td>per ogni blocco Ped Urg o scambio del III anno spezzato</td>
+                <td>per ogni blocco o collegamento spezzato (Ped Urg, OBI e PS del weekend, scambio del III anno)</td>
               </tr>
               <tr>
                 <td>{COST.weekendRest}</td>
@@ -307,8 +327,8 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>Storico.</b> I conteggi partono dai mesi precedenti dello stesso anno di specializzazione (da novembre) e si azzerano a novembre.
-          Chi entra a metà anno parte da zero, senza essere messo in pari. Un turno da 12h conta come due turni. Il totale esclude Bambi e gli
-          alti opzionali; la ruota comune non è conteggiata.
+          Chi entra a metà anno parte da zero, senza essere messo in pari. Un turno da 12h conta come due turni. Il totale esclude Bambi e i
+          reparti facoltativi; la ruota comune non è conteggiata.
         </li>
       </ol>
     </section>

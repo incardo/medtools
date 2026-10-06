@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import {
   ABSENCE_INFO,
+  ABSENCE_LIMITS,
   addDays,
   buildDemand,
   daysOfMonth,
@@ -13,7 +14,7 @@ import {
   type Year,
 } from '@medtools/engine';
 import { YEAR_LABEL, engineInput } from '../store';
-import { dayLabel, monthLabel, todayISO, type ViewProps } from '../format';
+import { dayLabel, monthLabel, shortDate, todayISO, type ViewProps } from '../format';
 
 /** Voci del menu, a gruppi: giorno intero, una fascia esclusa, una sola fascia disponibile. */
 const MENU: AbsenceKind[][] = [
@@ -148,6 +149,24 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
 
   const today = todayISO();
 
+  // Scadenza: entro il 15 del mese precedente. Limiti sulle X: avviso, non blocco.
+  const [y, m] = month.split('-').map(Number);
+  const deadline = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}-${String(ABSENCE_LIMITS.deadlineDay).padStart(2, '0')}`;
+  const overLimit = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const r of rows) {
+      const xs = days.filter((d) => data.absences[`${r.id}|${d}`] === 'X');
+      const we = xs.filter(isWeekend).length;
+      const wd = xs.length - we;
+      const msgs = [
+        we > ABSENCE_LIMITS.weekendX ? `${we} X nel weekend (max ${ABSENCE_LIMITS.weekendX})` : '',
+        wd > ABSENCE_LIMITS.weekdayX ? `${wd} X nei feriali (max ${ABSENCE_LIMITS.weekdayX})` : '',
+      ].filter(Boolean);
+      if (msgs.length) out.set(r.id, msgs.join(', '));
+    }
+    return out;
+  }, [rows, days, data.absences]);
+
   const summaryRow = (year: Year) => {
     const cells = totals.get(year)!;
     return (
@@ -189,6 +208,21 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
         fascia), <b>solo M</b> / <b>solo P</b> / <b>solo N</b> (disponibile solo in quella fascia). Ogni specializzando compila le
         proprie.
       </p>
+      <p className={`banner${today > deadline ? ' bad' : ''}`}>
+        Le indisponibilità di {monthLabel(month)} vanno comunicate <b>entro il {shortDate(deadline)}</b>
+        {today > deadline ? ' (termine scaduto: eventuali modifiche vanno concordate)' : ''}. Al massimo{' '}
+        <b>{ABSENCE_LIMITS.weekendX} X nel weekend</b> e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (le X
+        sono le indisponibilità di giorno intero; ferie e indisponibilità parziali non contano).
+      </p>
+      {overLimit.size > 0 && (
+        <p className="banner bad">
+          Oltre il limite:{' '}
+          {rows
+            .filter((r) => overLimit.has(r.id))
+            .map((r) => `${r.name} (${overLimit.get(r.id)})`)
+            .join('; ')}
+        </p>
+      )}
       <div className="brush-bar" role="group" aria-label="Pennello">
         <span className="muted">Più giorni insieme: scegli un pennello e trascina sulla riga</span>
         <button className={brush === null ? 'active' : ''} onClick={() => setBrush(null)} title="Il clic su una cella apre il menu">
@@ -230,8 +264,9 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
             {rows.map((r, i) => (
               <Fragment key={r.id}>
                 <tr className={i > 0 && rows[i - 1].year !== r.year ? 'sep' : ''}>
-                  <th className="sticky name">
+                  <th className={`sticky name${overLimit.has(r.id) ? ' over' : ''}`} title={overLimit.get(r.id)}>
                     <span className={`chip y${r.year}`}>{YEAR_LABEL[r.year]}</span> {r.name}
+                    {overLimit.has(r.id) && <span className="over-mark"> ⚠</span>}
                   </th>
                   {days.map((d) => {
                     const kind = data.absences[`${r.id}|${d}`];

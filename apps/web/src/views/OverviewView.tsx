@@ -3,12 +3,12 @@ import { daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Per
 import { YEAR_LABEL, academicYearFor, engineInput } from '../store';
 import { monthLabel, type ViewProps } from '../format';
 import { groupEnds, headerRows } from '../calendarHeaders';
-import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_TURNS, slotsByYear, summarize, summaryValue, turnSlots, type SummaryCol } from '../summary';
+import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_TURNS, slotsByYear, summarize, summaryValue, turnSlots, WARD_KEYS, type SummaryCol } from '../summary';
 
 const HEAD_ROWS = headerRows(SUMMARY_HEADERS);
 const ENDS = groupEnds(HEAD_ROWS);
 /** Colonne confrontate con la media del proprio anno di corso (le assenze no). */
-const BALANCED: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key), 'total', 'weekend'];
+const BALANCED: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key).filter((k) => !WARD_KEYS.includes(k)), 'total', 'weekend'];
 
 type Mode = 'mese' | 'anno';
 
@@ -55,7 +55,11 @@ export function OverviewView({ data, month }: ViewProps) {
       .map((year) => {
         const people = byYear.get(year)!.sort((a, b) => a.name.localeCompare(b.name));
         const pertinent = (p: Person, col: SummaryCol) =>
-          col === 'BAMBI' ? p.bambiInterest : (turnSlots(col)?.some((s) => expected[year].has(s)) ?? true);
+          col === 'BAMBI'
+            ? p.bambiInterest
+            : WARD_KEYS.includes(col)
+              ? year !== 3
+              : (turnSlots(col)?.some((s) => expected[year].has(s)) ?? true);
         // Media e scarto massimo per colonna, solo tra chi quel turno lo fa per regola.
         const stats = new Map<SummaryCol, { mean: number; maxDev: number }>();
         for (const col of BALANCED) {
@@ -93,7 +97,7 @@ export function OverviewView({ data, month }: ViewProps) {
       </div>
       <p className="hint">
         Turni per tipo; mattina e pomeriggio si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due. <b>Weekend</b> = giorni di sabato o domenica
-        lavorati. Il totale esclude Bambi e gli alti opzionali (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
+        lavorati. Il totale esclude Bambi e i reparti facoltativi (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
       <div className="legend">
         <span className="chip" style={{ background: 'rgba(46, 144, 250, 0.35)' }}>

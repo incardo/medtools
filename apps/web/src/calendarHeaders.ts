@@ -5,9 +5,9 @@ export const HEADERS: HeadNode[] = [
   {
     label: 'PS',
     children: [
-      { label: 'Mattina', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Alti (opz.)' }, { label: 'Verdi' }] },
-      { label: 'Pomeriggio', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Alti (opz.)' }, { label: 'Verdi' }] },
-      { label: 'Notte', children: [{ label: 'Specializzando' }, { label: 'Ruota comune / altro' }] },
+      { label: 'Mattina', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Autonomo' }, { label: 'Verdi' }] },
+      { label: 'Pomeriggio', children: [{ label: 'Alti' }, { label: 'Alti' }, { label: 'Autonomo' }, { label: 'Verdi' }] },
+      { label: 'Notte', children: [{ label: 'Specializzando' }, { label: 'Ruota comune / IV' }] },
     ],
   },
   { label: 'OBI', children: [{ label: 'Mattina', children: [{ label: '' }] }, { label: 'Pomeriggio', children: [{ label: '' }] }] },
@@ -17,6 +17,10 @@ export const HEADERS: HeadNode[] = [
   },
   { label: 'Bambi' },
   { label: 'Amb' },
+  {
+    label: 'Reparti (facoltativi)',
+    children: [{ label: 'Ortopedia' }, { label: 'Radiologia' }, { label: 'Anestesia' }, { label: 'Chirurgia' }],
+  },
 ];
 
 export const HEADER_DEPTH = 3;

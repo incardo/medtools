@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import {
   COLUMNS,
   EXTERNAL,
+  OPTIONAL_WARDS,
   RUOTA,
   SLOT_INFO,
   addDays,
@@ -291,7 +292,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                   </th>
                   {COLUMNS.map((col, i) => {
                     const k = keyOf({ date, ...col });
-                    // Secondo posto di notte: ruota comune (con il nome scritto a mano) o un altro specializzando.
+                    // Secondo posto di notte: ruota comune (con il nome scritto a mano) o un IV anno.
                     const secondNight = col.slot === 'PS_NOTTE' && col.idx === 1;
                     // Dati di prima: solo il nome della ruota comune, senza cella.
                     const cell: Cell | undefined = cells[k] ?? (secondNight && ruotaNames[date] ? { who: RUOTA, source: 'manual' } : undefined);
@@ -318,10 +319,10 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                         : pos.manualOnly
                           ? col.slot === 'BAMBI'
                             ? 'Bambi: facoltativo, solo chi è interessato'
-                            : col.slot.startsWith('PS_OPZ')
-                            ? 'Alti opzionale: per chi vuole fare un turno in più. Si compila a mano, non entra nel bilanciamento'
+                            : OPTIONAL_WARDS.includes(col.slot)
+                            ? `${SLOT_INFO[col.slot].label}: facoltativo, V o IV anno, tutto il giorno. Si compila a mano, non entra nel bilanciamento`
                             : secondNight
-                            ? 'Secondo posto di notte: ruota comune (scrivi il nome) oppure un altro specializzando, che conta come notte anche nel bilanciamento'
+                            ? 'Secondo posto di notte: ruota comune (scrivi il nome) oppure un IV anno, che conta come notte anche nel bilanciamento'
                             : 'Posto facoltativo: si compila a mano con chi è disponibile'
                           : `Regola: ${pos.years.map((y) => YEAR_LABEL[y]).join(' / ')} anno${pos.ruotaFallback ? ', altrimenti ruota comune' : ''}`,
                       ...ws.map((w) => w.message),
@@ -376,7 +377,7 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                               return (
                                 <optgroup key={y} label={`${YEAR_LABEL[y]} anno`}>
                                   {opts.map(({ person }) => {
-                                    const why = roster.unavailable(person.id, date, SLOT_INFO[col.slot].fascia);
+                                    const why = roster.unavailableForSlots(person.id, date, [col.slot]);
                                     return (
                                       <option key={person.id} value={person.id}>
                                         {person.name}

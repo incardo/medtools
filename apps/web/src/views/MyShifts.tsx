@@ -24,13 +24,17 @@ export function saveMe(id: string) {
 
 const TURN_LABEL: Record<string, string> = {
   PS_ALTI: 'PS alti',
-  PS_OPZ: 'PS alti opz.',
   PS_VERDI: 'PS verdi',
+  PS_AUTO: 'PS autonomo',
   PS_NOTTE: 'Notti',
   OBI: 'OBI',
   PEDU: 'Ped Urg',
   BAMBI: 'Bambi',
   AMB: 'Amb',
+  ORTO: 'Ortopedia',
+  RADIO: 'Radiologia',
+  ANEST: 'Anestesia',
+  CHIR: 'Chirurgia',
 };
 
 /** Turni di un giorno in parole: mattina e pomeriggio dello stesso tipo diventano "12h". */

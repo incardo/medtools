@@ -1,4 +1,4 @@
-import { SLOT_INFO } from './rules';
+import { fasceOf } from './rules';
 import { ABSENCE_BLOCKS, ABSENCE_INFO, type Absence, type AbsenceKind, AcademicYear, Enrollment, ExamDay, Fascia, Person, SlotCode, Year } from './types';
 import { academicYearOf } from './dates';
 
@@ -74,8 +74,10 @@ export class Roster {
 
   unavailableForSlots(personId: string, date: string, slots: SlotCode[]): string | null {
     for (const s of slots) {
-      const why = this.unavailable(personId, date, SLOT_INFO[s].fascia);
-      if (why) return why;
+      for (const f of fasceOf(s)) {
+        const why = this.unavailable(personId, date, f);
+        if (why) return why;
+      }
     }
     return null;
   }
