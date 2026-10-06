@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { addDays, makeRoster, type AcademicYear, type Enrollment, type Year } from '@medtools/engine';
+import { makeRoster, type AcademicYear, type Enrollment, type Year } from '@medtools/engine';
 import { YEAR_LABEL, academicYearFor, engineInput, newId } from '../store';
-import { shortDate, type ViewProps } from '../format';
+import { type ViewProps } from '../format';
 
 function nextYearId(id: string): string {
   const s = Number(id.slice(0, 4)) + 1;
@@ -159,9 +159,6 @@ export function PeopleView({ data, setData, month }: ViewProps) {
                       />
                     </td>
                     <td className="actions">
-                      <button onClick={() => updateEnrollment(e, { activeTo: addDays(from, -1) })} title="Esce dal giorno scelto sotto">
-                        Fai uscire
-                      </button>
                       <button
                         className="danger"
                         onClick={() => {
@@ -202,7 +199,7 @@ export function PeopleView({ data, setData, month }: ViewProps) {
         </button>
       </div>
       <p className="hint">
-        "Fai uscire" imposta l'ultimo giorno al giorno prima di <b>{shortDate(from)}</b>. Chi entra a metà anno parte con il conteggio da zero.
+        Per far uscire qualcuno basta compilare "attivo fino al". Chi entra a metà anno parte con il conteggio da zero.
       </p>
 
       {others.length > 0 && (
