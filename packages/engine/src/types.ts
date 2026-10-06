@@ -56,7 +56,7 @@ export const ABSENCE_INFO: Record<AbsenceKind, { short: string; label: string }>
  * Limiti alle indisponibilità (solo X, giorno intero) per persona e mese, e giorno del mese precedente entro cui
  * comunicarle. Superarli dà un avviso, non un blocco.
  */
-export const ABSENCE_LIMITS = { weekendX: 2, weekdayX: 8, deadlineDay: 15 } as const;
+export const ABSENCE_LIMITS = { weekendX: 4, weekdayX: 8, deadlineDay: 15 } as const;
 
 /** Etichetta generica: persone a caso, non in anagrafica. */
 export const RUOTA = 'RUOTA_COMUNE';

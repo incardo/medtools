@@ -159,7 +159,7 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
       const we = xs.filter(isWeekend).length;
       const wd = xs.length - we;
       const msgs = [
-        we > ABSENCE_LIMITS.weekendX ? `${we} X nel weekend (max ${ABSENCE_LIMITS.weekendX})` : '',
+        we > ABSENCE_LIMITS.weekendX ? `${we} giorni di X nel weekend (max ${ABSENCE_LIMITS.weekendX}, cioè 2 weekend)` : '',
         wd > ABSENCE_LIMITS.weekdayX ? `${wd} X nei feriali (max ${ABSENCE_LIMITS.weekdayX})` : '',
       ].filter(Boolean);
       if (msgs.length) out.set(r.id, msgs.join(', '));
@@ -211,7 +211,7 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
       <p className={`banner${today > deadline ? ' bad' : ''}`}>
         Le indisponibilità di {monthLabel(month)} vanno comunicate <b>entro il {shortDate(deadline)}</b>
         {today > deadline ? ' (termine scaduto: eventuali modifiche vanno concordate)' : ''}. Al massimo{' '}
-        <b>{ABSENCE_LIMITS.weekendX} X nel weekend</b> e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (le X
+        <b>{ABSENCE_LIMITS.weekendX} giorni di X nel weekend</b> (2 sabati e 2 domeniche, cioè 2 weekend) e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (le X
         sono le indisponibilità di giorno intero; ferie e indisponibilità parziali non contano).
       </p>
       {overLimit.size > 0 && (

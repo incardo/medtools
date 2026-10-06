@@ -204,7 +204,7 @@ Scheda Disponibilità (29/09/2026) **[detto]**:
 - **Pennello** per inserire più giorni insieme: si sceglie un tipo (o "cancella") e si trascina sulla riga di una persona; il trascinamento resta sulla riga dove è iniziato. Con "Menu" il clic apre il menu come prima.
 - **Riga "assenti" per ogni anno di corso**: per ogni giorno, quante persone di quell'anno sono assenti tutto il giorno (ferie, indisponibili, esami), più "+N" per chi è assente solo in parte. Colore: **giallo** = nessun margine, **rosso** = non bastano. Il confronto è con una stima delle persone che servono: i posti che le regole danno a quell'anno quel giorno (un 12h = una persona), più chi smonta dalla notte del giorno prima. Il dettaglio con i nomi è nel tooltip della cella.
 
-**Limiti** (06/10/2026) **[detto]**: le indisponibilità si comunicano **entro il 15 del mese precedente**; al massimo **2 X nel weekend** e **8 X nei giorni feriali** per persona nel mese. Contano solo le **X** (giorno intero): ferie e indisponibilità parziali no. Oltre il limite, o dopo la scadenza, la scheda Disponibilità mostra un **avviso** (non blocca). Valori in `ABSENCE_LIMITS` (`packages/engine/src/types.ts`).
+**Limiti** (06/10/2026) **[detto]**: le indisponibilità si comunicano **entro il 15 del mese precedente**; al massimo **4 giorni di X nel weekend** (2 weekend: sabato e domenica; precisato il 06/10/2026) e **8 X nei giorni feriali** per persona nel mese. Contano solo le **X** (giorno intero): ferie e indisponibilità parziali no. Oltre il limite, o dopo la scadenza, la scheda Disponibilità mostra un **avviso** (non blocca). Valori in `ABSENCE_LIMITS` (`packages/engine/src/types.ts`).
 
 I dati di assenza del vecchio file Excel **non si considerano**. **[detto]**
 

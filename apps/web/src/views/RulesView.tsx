@@ -245,8 +245,8 @@ export function RulesView({ data, month }: ViewProps) {
         </tbody>
       </table>
       <p className="hint">
-        Si comunicano <b>entro il {ABSENCE_LIMITS.deadlineDay} del mese precedente</b>. Al massimo <b>{ABSENCE_LIMITS.weekendX} X nel
-        weekend</b> e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (ferie e indisponibilità parziali non
+        Si comunicano <b>entro il {ABSENCE_LIMITS.deadlineDay} del mese precedente</b>. Al massimo <b>{ABSENCE_LIMITS.weekendX} giorni di X nel
+        weekend</b> (2 sabati e 2 domeniche, cioè 2 weekend) e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (ferie e indisponibilità parziali non
         contano): oltre il limite la scheda Disponibilità dà un avviso.
       </p>
       <p className="hint">
