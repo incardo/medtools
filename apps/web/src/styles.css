@@ -569,8 +569,9 @@ td.strong {
   min-width: 44px;
   padding: 4px 6px;
 }
-.overview td.na {
-  color: #b8c0cc;
+.overview td.na,
+.chip.na {
+  background-image: repeating-linear-gradient(45deg, transparent 0 6px, var(--border) 6px 7px);
 }
 .overview tr.group-row > * {
   background: var(--weekend);

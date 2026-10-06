@@ -107,7 +107,7 @@ export function OverviewView({ data, month }: ViewProps) {
         <span className="chip" style={{ background: 'rgba(247, 144, 9, 0.35)' }}>
           sopra la media del proprio anno
         </span>
-        <span className="chip">· turno non previsto per quell'anno</span>
+        <span className="chip na">turno non previsto per quell'anno</span>
       </div>
       <div className="table-wrap">
         <table className="overview cal">
@@ -159,9 +159,7 @@ export function OverviewView({ data, month }: ViewProps) {
                       const s = stats.get(col);
                       if (!pertinent(p, col) && !v)
                         return (
-                          <td key={col} className={cls(i, ' na')} title="Non previsto per questo anno di corso">
-                            ·
-                          </td>
+                          <td key={col} className={cls(i, ' na')} title="Non previsto per questo anno di corso" />
                         );
                       const bg = s && pertinent(p, col) ? heat(v, s.mean, s.maxDev) : absenceBg(col, v, absMax[col] ?? 0);
                       return (
