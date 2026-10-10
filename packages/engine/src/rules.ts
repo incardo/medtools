@@ -67,25 +67,31 @@ export function yearCanCover(year: Year, slot: SlotCode): boolean {
 export const SUPER_FESTIVI = ['12-24', '12-25', '12-26', '12-31', '01-01'];
 export const isSuperFestivo = (date: string) => SUPER_FESTIVI.includes(date.slice(5));
 
-/** Numero del weekend nel mese (1–5), contato dal sabato: la domenica appartiene al weekend del sabato prima. */
-export const weekendNumber = (date: string) => Math.ceil(Number(weekendKey(date).slice(8)) / 7);
-
 /** Chi copre un posto di notte: un anno di corso o la ruota comune ('R'). */
 export type NightWho = Year | 'R';
 
-/** Notti del weekend per numero di weekend nel mese: [posto 1, posto 2]. Il quinto weekend come il primo e il terzo. */
-export const NIGHT_WEEKEND: Record<number, [NightWho, NightWho]> = {
-  1: [5, 4],
-  2: [4, 'R'],
-  3: [5, 4],
-  4: [5, 'R'],
-  5: [5, 4],
+/**
+ * Notti del weekend: un ciclo di 4 weekend che continua senza ripartire a ogni mese. [posto 1, posto 2].
+ * Il primo weekend del ciclo è quello di `NIGHT_CYCLE_START`.
+ */
+export const NIGHT_CYCLE: [NightWho, NightWho][] = [
+  [5, 4],
+  [4, 'R'],
+  [5, 4],
+  [5, 'R'],
+];
+export const NIGHT_CYCLE_START = '2026-11-07';
+
+/** Posizione (0–3) del weekend nel ciclo delle notti; la domenica va con il suo sabato. */
+export const weekendCycle = (date: string) => {
+  const weeks = Math.round((Date.parse(weekendKey(date)) - Date.parse(NIGHT_CYCLE_START)) / (7 * 86_400_000));
+  return ((weeks % NIGHT_CYCLE.length) + NIGHT_CYCLE.length) % NIGHT_CYCLE.length;
 };
 
-/** I due posti di notte in PS: lun/mer/ven V + ruota comune, mar/gio V + IV, weekend secondo `NIGHT_WEEKEND`, super festivi V + IV. */
+/** I due posti di notte in PS: lun/mer/ven V + ruota comune, mar/gio V + IV, weekend secondo `NIGHT_CYCLE`, super festivi V + IV. */
 export function nightPlan(date: string): [NightWho, NightWho] {
   if (isSuperFestivo(date)) return [5, 4];
-  if (isWeekend(date)) return NIGHT_WEEKEND[weekendNumber(date)];
+  if (isWeekend(date)) return NIGHT_CYCLE[weekendCycle(date)];
   return weekday(date) % 2 === 0 ? [5, 4] : [5, 'R'];
 }
 

@@ -4,7 +4,10 @@ import {
   ABSENCE_INFO,
   ABSENCE_LIMITS,
   MAX_WEEKENDS,
-  NIGHT_WEEKEND,
+  NIGHT_CYCLE,
+  daysOfMonth,
+  nightPlan,
+  weekday,
   OPTIONAL_WARDS,
   SUPER_FESTIVI,
   COLUMNS,
@@ -83,7 +86,7 @@ export function RulesView({ data, month }: ViewProps) {
       <div className="toolbar">
         <p className="hint">
           Le regole seguono l'<b>anno di corso</b>, non le persone. Il colore dice quale anno copre il posto. Le notti del weekend
-          cambiano con il weekend del mese (vedi sotto): qui c'è il primo.
+          seguono un ciclo di 4 weekend (vedi sotto): qui c'è il primo del ciclo.
         </p>
         <div className="seg" role="group" aria-label="Periodo dell'anno">
           <button className={vPresent ? 'active' : ''} onClick={() => setVPresent(true)}>
@@ -165,7 +168,7 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>Weekend del V anno</b>: chi fa la <b>notte di venerdì</b> fa la <b>domenica gli alti 12h</b>; chi fa gli <b>alti 12h il sabato</b>{' '}
-          fa la <b>notte di domenica</b> (nei weekend in cui la notte è del V anno); la notte di sabato ruota tra i V anno. Sono preferenze forti: se la persona non è disponibile, il
+          fa la <b>notte di domenica</b> (tranne nei weekend IV + ruota comune, dove la notte non è del V anno); la notte di sabato ruota tra i V anno. Sono preferenze forti: se la persona non è disponibile, il
           posto va a un altro V anno. La domenica agli alti c'è sempre una persona diversa dal sabato.
         </li>
         <li>
@@ -178,14 +181,18 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>Notti in PS</b>, due posti: lunedì, mercoledì e venerdì <b>V anno + ruota comune</b>; martedì e giovedì <b>V + IV anno</b>.
-          Nel weekend (sabato e domenica notte) dipende dal weekend del mese, contato dal sabato (la domenica va con il suo sabato):
+          Nel weekend (sabato e domenica notte) un ciclo di {NIGHT_CYCLE.length} weekend che continua da un mese all'altro, senza
+          ripartire: {NIGHT_CYCLE.map((p) => p.map((w) => (w === 'R' ? 'ruota comune' : YEAR_LABEL[w])).join(' + ')).join(' → ')} → di
+          nuovo dall'inizio. La domenica va con il suo sabato. I weekend del mese scelto:
           <table className="rules-small">
             <tbody>
-              {Object.entries(NIGHT_WEEKEND).map(([n, pair]) => (
-                <tr key={n}>
-                  <td>{n}° weekend</td>
+              {daysOfMonth(month)
+                .filter((d) => weekday(d) === 6)
+                .map((sat) => (
+                <tr key={sat}>
+                  <td>{shortDate(sat)}</td>
                   <td>
-                    {pair.map((w) =>
+                    {nightPlan(sat).map((w) =>
                       w === 'R' ? (
                         <span key={w} className="chip ruota">
                           Ruota comune
@@ -196,7 +203,6 @@ export function RulesView({ data, month }: ViewProps) {
                         </span>
                       ),
                     )}
-                    {n === '5' && <small className="note">come il primo</small>}
                   </td>
                 </tr>
               ))}
@@ -232,8 +238,8 @@ export function RulesView({ data, month }: ViewProps) {
           );
         })}
         <li>
-          <span className="chip ruota">Ruota comune</span> solo notti in PS: nel secondo posto dove la regola la prevede (lun, mer, ven e il 2° e
-          4° weekend), oppure come ripiego dal lunedì al venerdì quando nessuno dell'anno previsto è disponibile. Mai nei super festivi. Non
+          <span className="chip ruota">Ruota comune</span> solo notti in PS: nel secondo posto dove la regola la prevede (lun, mer, ven e i
+          weekend del ciclo con la ruota comune), oppure come ripiego dal lunedì al venerdì quando nessuno dell'anno previsto è disponibile. Mai nei super festivi. Non
           entra nel bilanciamento né nella panoramica.
         </li>
       </ul>

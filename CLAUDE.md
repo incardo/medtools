@@ -99,7 +99,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 ### IV anno **[detto]**
 
 - Ped Urg mattina **e** pomeriggio, **tutti i giorni**.
-- **Notte**: martedì e giovedì, nel 1°, 2° e 3° weekend del mese e nei super festivi (vedi "Notti"), scelto dal motore. **[detto]** (10/10/2026) Non fa l'OBI del lunedì.
+- **Notte**: martedì e giovedì, nei weekend V + IV e IV + ruota comune del ciclo e nei super festivi (vedi "Notti"), scelto dal motore. **[detto]** (10/10/2026) Non fa l'OBI del lunedì.
 - PS **lunedì, mercoledì, venerdì**: mattina **verdi**, pomeriggio **alti**.
 - PS **martedì e giovedì**: mattina **alti**, pomeriggio **verdi**.
 - Nel weekend Ped Urg è coperto da **un solo specializzando** per mattina e pomeriggio insieme.
@@ -112,8 +112,8 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 - **Venerdì mattina**: **tre** V anno, due agli alti e uno autonomo. **Venerdì pomeriggio**: solo l'**autonomo** (alti al IV, verdi al III).
 - **OBI** mattina **e** pomeriggio, solo V anno, anche il lunedì. Nel **weekend** l'OBI lo copre **la stessa persona sabato e domenica** (12h al giorno), con **smonto il lunedì**; i weekend di OBI **ruotano** tra i V anno, così ogni weekend c'è una persona diversa nei vari mesi (va prima a chi ne ha fatti meno nell'anno).
 - **Al massimo 2 weekend al mese** per persona; anche **una sola giornata** conta come weekend (due sabati = tetto raggiunto). **[detto]** (06/10/2026) È una preferenza forte (`MAX_WEEKENDS`, `WEIGHTS.weekendCap`, `COST.weekendCap`), con avviso nel calendario se superato. Senza l'autonomo nel weekend (10/10/2026) ogni weekend impegna 4–5 V anno diversi (alti sab, alti dom = notte di ven, OBI, notti di sab e dom se sono del V anno).
-- **Notti**: tutte le notti dal lunedì al venerdì e le notti del 1°, 3°, 4° e 5° weekend (vedi "Notti"), distribuite in modo **bilanciato**.
-- **Weekend in PS** (alti 12h): chi fa la **notte di venerdì** fa la **domenica** tutto il giorno; chi fa il **sabato** di giorno fa la **notte di domenica** (quando la notte di domenica è del V anno); la **notte di sabato** ruota tra i V anno. Nel motore sono preferenze forti: se la persona non è disponibile, il posto va a un altro V anno.
+- **Notti**: tutte le notti dal lunedì al venerdì e le notti dei weekend del ciclo con il V anno (vedi "Notti"), distribuite in modo **bilanciato**.
+- **Weekend in PS** (alti 12h): chi fa la **notte di venerdì** fa la **domenica** tutto il giorno; chi fa il **sabato** di giorno fa la **notte di domenica** (**eccezione**: nei weekend IV + ruota comune la notte di domenica non è del V anno e il collegamento salta **[detto]** (10/10/2026)); la **notte di sabato** ruota tra i V anno. Nel motore sono preferenze forti: se la persona non è disponibile, il posto va a un altro V anno.
 - A fine anno (ultimi giorni di ottobre) non c'è più: i suoi turni li coprono IV e III anno.
 - Eventuali giorni d'esame (es. 5 ottobre 2026) sono **parametri del mese**, non regole fisse (vedi sezione 8).
 
@@ -152,13 +152,12 @@ Ogni posto PS feriale ha un anno di corso. In codice: `PS_FERIALE` in `packages/
 |---|---|---|
 | Lun, Mer, Ven | V anno | ruota comune |
 | Mar, Gio | V anno | IV anno |
-| 1° e 3° weekend (sab e dom notte) | V anno | IV anno |
-| 2° weekend | IV anno | ruota comune |
-| 4° weekend | V anno | ruota comune |
-| 5° weekend | V anno | IV anno (come il 1°) **[assunzione]** |
+| Weekend (sab e dom notte), ciclo di 4 | V anno → IV anno → V anno → V anno | IV anno → ruota comune → IV anno → ruota comune |
 | Super festivi (24, 25, 26, 31 dicembre, 1 gennaio) | V anno | IV anno (mai ruota comune) |
 
-Il numero del weekend si conta dal **sabato** (1–7 = 1°, 8–14 = 2°, …); la domenica appartiene al weekend del suo sabato, anche se il sabato è nel mese prima (es. domenica 1 novembre 2026 = 5° weekend di ottobre). **[assunzione]** I super festivi prevalgono su giorno e weekend. In codice: `nightPlan`, `NIGHT_WEEKEND`, `SUPER_FESTIVI` in `packages/engine/src/rules.ts`.
+Weekend: il ciclo **V + IV → IV + RC → V + IV → V + RC** continua da un mese all'altro **senza ripartire** a ogni mese. **[detto]** (10/10/2026) Il primo weekend del ciclo è quello di sabato 7 novembre 2026 (`NIGHT_CYCLE_START`); la domenica va con il suo sabato (es. domenica 1 novembre 2026 = weekend del 31 ottobre, V + RC). I super festivi prevalgono su giorno e weekend. In codice: `nightPlan`, `NIGHT_CYCLE`, `weekendCycle`, `SUPER_FESTIVI` in `packages/engine/src/rules.ts`.
+
+Dopo l'uscita del V anno (28–31 ottobre) autonomo e notti del V anno passano a IV o III anno, come gli altri suoi posti. **[detto]** (10/10/2026)
 
 ### Vincoli per gruppo **[detto]**
 
@@ -170,7 +169,7 @@ III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
 ### Ruota comune **[detto]**
 
 - Sono persone **a caso**, non gestite in anagrafica: nel tool resta l'etichetta generica **"Ruota comune"**, assegnabile a un turno al posto di un nome.
-- Ruota comune copre **solo notti in PS**: il secondo posto di lun, mer, ven e del 2° e 4° weekend (vedi "Notti"). **[detto]** (10/10/2026) Mai nei super festivi.
+- Ruota comune copre **solo notti in PS**: il secondo posto di lun, mer, ven e dei weekend IV + RC e V + RC del ciclo (vedi "Notti"). **[detto]** (10/10/2026) Mai nei super festivi.
 - Nel motore è anche il ripiego per le notti lun–ven quando nessuno dell'anno previsto è disponibile. **[assunzione]**
 - La ruota comune **non entra** nel bilanciamento né nella panoramica per medico. **[detto]**
 - Nel calendario, accanto a "Notte PS", c'è una colonna **"Ruota comune / IV"** (secondo posto di notte). Dove la regola prevede la ruota comune, il motore scrive "Ruota comune" e il nome si scrive a mano (testo libero); dove prevede un IV anno, lo sceglie il motore.
@@ -292,7 +291,7 @@ Risolto il 29/09/2026: le "5 notti" del V anno sono **5 notti a settimana** cope
 
 Risolti il 06/10/2026: autonomo del V anno anche nel weekend; OBI del weekend alla stessa persona con smonto il lunedì; OBI del lunedì al V anno; secondo posto di notte lun–ven resta a mano; Ped Urg mattina del III anno resta; avvisi (non blocchi) per limiti e scadenza delle indisponibilità; reparti facoltativi solo lun–ven, tutto il giorno, fuori dal bilanciamento; alti opzionale tolto.
 
-Cambiati il 10/10/2026: niente autonomo nel weekend; notti con ruota comune lun/mer/ven e IV anno mar/gio; notti del weekend secondo il numero del weekend nel mese; super festivi solo V + IV; esclusione personale dall'OBI.
+Cambiati il 10/10/2026: niente autonomo nel weekend; notti con ruota comune lun/mer/ven e IV anno mar/gio; notti del weekend in un ciclo continuo di 4 weekend (V + IV, IV + RC, V + IV, V + RC); nei weekend IV + RC il V anno degli alti del sabato non fa la notte di domenica; super festivi solo V + IV; esclusione personale dall'OBI.
 
 Aperti: nessuno. Restano le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
 

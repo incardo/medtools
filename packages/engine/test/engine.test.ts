@@ -17,7 +17,7 @@ import {
   monthsOfAcademicYear,
   nightPlan,
   ruotaCanCover,
-  weekendNumber,
+  weekendCycle,
   suggestMonth,
   validate,
   weekday,
@@ -49,11 +49,15 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect(week.map((d) => night(d, 1).manualOnly)).toEqual(week.map(() => false));
   });
 
-  it('notti del weekend: 1° e 3° weekend V + IV, 2° IV + ruota, 4° V + ruota, 5° come il 1°', () => {
+  it('notti del weekend: ciclo continuo V + IV, IV + ruota, V + IV, V + ruota (non riparte a ogni mese)', () => {
     const nights = (d: string) => buildDemand(d, ctx).filter((p) => p.slot === 'PS_NOTTE').map((p) => p.years);
-    // novembre 2026: sabati 7, 14, 21, 28; la domenica 1 appartiene al weekend di sabato 31 ottobre (5°).
-    expect(weekendNumber('2026-11-01')).toBe(5);
-    expect(nights('2026-11-01')).toEqual([[5], [4]]);
+    // La domenica 1 novembre appartiene al weekend di sabato 31 ottobre, l'ultimo del ciclo prima del 7 novembre.
+    expect(weekendCycle('2026-11-01')).toBe(3);
+    expect(nights('2026-11-01')).toEqual([[5], []]);
+    // 5 dicembre: il ciclo riparte dopo il 28 novembre (V + ruota), non dal "primo weekend del mese".
+    expect(weekendCycle('2026-12-05')).toBe(0);
+    expect(weekendCycle('2027-01-02')).toBe(0);
+    expect(weekendCycle('2027-01-30')).toBe(0);
     for (const [sat, exp] of [['2026-11-07', [[5], [4]]], ['2026-11-14', [[4], []]], ['2026-11-21', [[5], [4]]], ['2026-11-28', [[5], []]]] as const) {
       expect(nights(sat)).toEqual(exp);
       expect(nights(addDays(sat, 1))).toEqual(exp);
@@ -157,12 +161,11 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect(buildDemand('2026-11-03', ctx).find((p) => p.slot === 'OBI_M')!.alsoSlots).toEqual([]); // mar: M e P separati
   });
 
-  it('ruota comune: notti lun–ven (anche come ripiego) e notti del 2° e 4° weekend', () => {
+  it('ruota comune: notti lun–ven (anche come ripiego) e notti dei weekend con la ruota comune', () => {
     for (const date of daysOfMonth('2026-11')) {
       for (const p of buildDemand(date, ctx)) {
         const wd = weekday(date);
-        const n = weekendNumber(date);
-        expect(p.ruotaFallback).toBe(p.slot === 'PS_NOTTE' && ((wd >= 1 && wd <= 5) || n === 2 || n === 4));
+        expect(p.ruotaFallback).toBe(p.slot === 'PS_NOTTE' && ((wd >= 1 && wd <= 5) || [1, 3].includes(weekendCycle(date))));
       }
     }
   });
