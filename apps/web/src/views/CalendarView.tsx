@@ -302,9 +302,11 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                     const year = cell?.who && cell.who !== RUOTA ? roster.yearOf(cell.who, date) : null;
                     // Colore dell'anno previsto dalla regola, anche se la cella è ancora vuota.
                     const expected = pos && !pos.manualOnly ? pos.years[0] : mirror ? mirror.years[0] : undefined;
+                    // Posto della ruota comune: nessun anno di corso.
+                    const ruotaPos = !!pos && !pos.manualOnly && !pos.years.length;
                     const cls = [
                       'cell',
-                      cell?.who === RUOTA ? 'ruota' : year ? `y${year}` : expected ? `y${expected} expected` : '',
+                      cell?.who === RUOTA ? 'ruota' : year ? `y${year}` : expected ? `y${expected} expected` : ruotaPos && !cell?.who ? 'ruota expected' : '',
                       !pos && !mirror ? 'unused' : '',
                       pos?.manualOnly && col.slot !== 'BAMBI' ? 'optional' : '',
                       cell?.source === 'manual' ? 'manual' : '',
@@ -321,10 +323,10 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                             ? 'Bambi: facoltativo, solo chi è interessato'
                             : OPTIONAL_WARDS.includes(col.slot)
                             ? `${SLOT_INFO[col.slot].label}: facoltativo, V o IV anno, tutto il giorno. Si compila a mano, non entra nel bilanciamento`
-                            : secondNight
-                            ? 'Secondo posto di notte: ruota comune (scrivi il nome) oppure un IV anno, che conta come notte anche nel bilanciamento'
                             : 'Posto facoltativo: si compila a mano con chi è disponibile'
-                          : `Regola: ${pos.years.map((y) => YEAR_LABEL[y]).join(' / ')} anno${pos.ruotaFallback ? ', altrimenti ruota comune' : ''}`,
+                          : ruotaPos
+                            ? 'Regola: ruota comune (scrivi il nome). Uno specializzando messo qui conta come una notte'
+                            : `Regola: ${pos.years.map((y) => YEAR_LABEL[y]).join(' / ')} anno${pos.ruotaFallback ? ', altrimenti ruota comune' : ''}`,
                       ...ws.map((w) => w.message),
                     ].join('\n');
                     const groups = ([5, 4, 3] as const).map((y) => ({
@@ -377,7 +379,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
                               return (
                                 <optgroup key={y} label={`${YEAR_LABEL[y]} anno`}>
                                   {opts.map(({ person }) => {
-                                    const why = roster.unavailableForSlots(person.id, date, [col.slot]);
+                                    const why =
+                                      roster.unavailableForSlots(person.id, date, [col.slot]) ?? roster.excludedFrom(person.id, [col.slot]);
                                     return (
                                       <option key={person.id} value={person.id}>
                                         {person.name}

@@ -1,10 +1,11 @@
-import { fasceOf } from './rules';
+import { SLOT_INFO, fasceOf } from './rules';
 import { ABSENCE_BLOCKS, ABSENCE_INFO, type Absence, type AbsenceKind, AcademicYear, Enrollment, ExamDay, Fascia, Person, SlotCode, Year } from './types';
 import { academicYearOf } from './dates';
 
 /** Chi c'è, in che anno di corso, e quando è disponibile. */
 export class Roster {
   private absences = new Map<string, AbsenceKind>();
+  private noObi = new Set<string>();
 
   constructor(
     readonly people: Person[],
@@ -14,6 +15,12 @@ export class Roster {
     private exams: ExamDay[],
   ) {
     for (const a of absences) this.absences.set(`${a.personId}|${a.date}`, a.kind);
+    for (const p of people) if (p.noObi) this.noObi.add(p.id);
+  }
+
+  /** Eccezione personale (scheda Persone): la persona è esclusa da uno di questi turni. */
+  excludedFrom(personId: string, slots: SlotCode[]): string | null {
+    return this.noObi.has(personId) && slots.some((s) => SLOT_INFO[s].family === 'OBI') ? "esclusa dall'OBI" : null;
   }
 
   /** Anno di corso della persona in quella data, o null se non è attiva. */

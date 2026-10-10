@@ -1,4 +1,4 @@
-import { isWeekend, weekday } from './dates';
+import { addDays, isWeekend, weekday, weekendKey } from './dates';
 import type { Fascia, Family, Position, SlotCode, Year } from './types';
 
 export const SLOT_INFO: Record<SlotCode, { family: Family; fascia: Fascia; label: string; allDay?: boolean }> = {
@@ -63,10 +63,40 @@ export function yearCanCover(year: Year, slot: SlotCode): boolean {
   return true;
 }
 
-/** La ruota comune copre solo le notti dal lunedì al venerdì. */
+/** Super festivi (mese-giorno): la notte di PS solo IV e V anno, senza ruota comune. */
+export const SUPER_FESTIVI = ['12-24', '12-25', '12-26', '12-31', '01-01'];
+export const isSuperFestivo = (date: string) => SUPER_FESTIVI.includes(date.slice(5));
+
+/** Numero del weekend nel mese (1–5), contato dal sabato: la domenica appartiene al weekend del sabato prima. */
+export const weekendNumber = (date: string) => Math.ceil(Number(weekendKey(date).slice(8)) / 7);
+
+/** Chi copre un posto di notte: un anno di corso o la ruota comune ('R'). */
+export type NightWho = Year | 'R';
+
+/** Notti del weekend per numero di weekend nel mese: [posto 1, posto 2]. Il quinto weekend come il primo e il terzo. */
+export const NIGHT_WEEKEND: Record<number, [NightWho, NightWho]> = {
+  1: [5, 4],
+  2: [4, 'R'],
+  3: [5, 4],
+  4: [5, 'R'],
+  5: [5, 4],
+};
+
+/** I due posti di notte in PS: lun/mer/ven V + ruota comune, mar/gio V + IV, weekend secondo `NIGHT_WEEKEND`, super festivi V + IV. */
+export function nightPlan(date: string): [NightWho, NightWho] {
+  if (isSuperFestivo(date)) return [5, 4];
+  if (isWeekend(date)) return NIGHT_WEEKEND[weekendNumber(date)];
+  return weekday(date) % 2 === 0 ? [5, 4] : [5, 'R'];
+}
+
+/**
+ * La ruota comune copre le notti: dove la regola la prevede, e come ripiego dal lunedì al venerdì.
+ * Mai nei super festivi.
+ */
 export function ruotaCanCover(slot: SlotCode, date: string): boolean {
+  if (slot !== 'PS_NOTTE' || isSuperFestivo(date)) return false;
   const wd = weekday(date);
-  return slot === 'PS_NOTTE' && wd >= 1 && wd <= 5;
+  return (wd >= 1 && wd <= 5) || nightPlan(date).includes('R');
 }
 
 interface DemandContext {
@@ -100,23 +130,27 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
   const V: Year[] = v ? [5] : [4, 3];
   const who = (y: Year): Year[] => (y === 5 ? V : [y]);
 
+  const night = nightPlan(date);
+  const nightYears = (w: NightWho): Year[] => (w === 'R' ? [] : who(w));
+  const vNight = (d: string) => v && nightPlan(d)[0] === 5;
+
   if (isWeekend(date)) {
     const sunday = wd === 0;
-    // V anno agli alti 12h. Chi fa il sabato fa la notte di domenica; la domenica tocca a chi ha fatto la notte di venerdì
-    // (mai la stessa persona del sabato).
+    // V anno agli alti 12h. Chi fa il sabato fa la notte di domenica (se la domenica la notte è del V anno);
+    // la domenica tocca a chi ha fatto la notte di venerdì (mai la stessa persona del sabato).
     drafts.push(
       sunday
         ? { slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], notPrevDay: true, ...(v && { prevDaySlot: 'PS_NOTTE', prevDays: 2 }) }
-        : { slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], ...(v && { blockAhead: [['PS_NOTTE']] }) },
+        : { slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], ...(vNight(addDays(date, 1)) && { blockAhead: [['PS_NOTTE']] }) },
     );
     // III anno: uno agli alti e uno ai verdi, 12h ciascuno; la domenica si scambiano.
     drafts.push({ slot: 'PS_ALTI_M', idx: 1, years: [3], alsoSlots: ['PS_ALTI_P'], prevDaySlot: sunday ? 'PS_VERDI_M' : undefined });
-    // Autonomo del V anno 12h.
-    drafts.push({ slot: 'PS_AUTO_M', idx: 0, years: V, alsoSlots: ['PS_AUTO_P'] });
+    // L'autonomo nel weekend non c'è.
     drafts.push({ slot: 'PS_VERDI_M', idx: 0, years: [3], alsoSlots: ['PS_VERDI_P'], prevDaySlot: sunday ? 'PS_ALTI_M' : undefined });
-    // Notte: un V anno (la domenica chi ha fatto gli alti il sabato) e un IV anno.
-    drafts.push({ slot: 'PS_NOTTE', idx: 0, years: V, ...(v && sunday && { prevDaySlot: 'PS_ALTI_M' }) });
-    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: [4] });
+    // Notte: secondo il numero del weekend nel mese (V + IV, IV + ruota comune, V + ruota comune).
+    // La domenica il V anno della notte è chi ha fatto gli alti il sabato.
+    drafts.push({ slot: 'PS_NOTTE', idx: 0, years: nightYears(night[0]), ...(vNight(date) && sunday && { prevDaySlot: 'PS_ALTI_M' }) });
+    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: nightYears(night[1]) });
     // OBI 12h: la stessa persona sabato e domenica (weekend di OBI, a rotazione tra i V anno).
     drafts.push(
       sunday
@@ -133,11 +167,11 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
       drafts.push({ slot: `PS_AUTO_${f}`, idx: 0, years: who(auto) });
       drafts.push({ slot: `PS_VERDI_${f}`, idx: 0, years: who(verdi) });
     }
-    // Notte: sempre un V anno. Chi fa la notte di venerdì fa la domenica gli alti 12h.
-    drafts.push({ slot: 'PS_NOTTE', idx: 0, years: V, ...(v && wd === 5 && { blockAhead: [[], ['PS_ALTI_M', 'PS_ALTI_P']] }) });
-    // Secondo posto di notte (lun–ven): ruota comune oppure un IV anno, solo a mano.
-    // Se è uno specializzando conta come una notte, anche nel bilanciamento.
-    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: [4], manualOnly: true });
+    // Notte: un V anno (chi fa la notte di venerdì fa la domenica gli alti 12h) e, secondo il giorno,
+    // la ruota comune (lun/mer/ven) o un IV anno (mar/gio, super festivi).
+    // Il IV anno di notte conta come una notte, anche nel bilanciamento.
+    drafts.push({ slot: 'PS_NOTTE', idx: 0, years: nightYears(night[0]), ...(v && wd === 5 && { blockAhead: [[], ['PS_ALTI_M', 'PS_ALTI_P']] }) });
+    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: nightYears(night[1]) });
     drafts.push({ slot: 'OBI_M', idx: 0, years: V });
     drafts.push({ slot: 'OBI_P', idx: 0, years: V });
     drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], prevDaySlot: wd === 1 ? 'PEDU_M' : undefined });
@@ -158,7 +192,7 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
   return drafts.map((d) => ({
     date,
     alsoSlots: [],
-    // Se nessuno è disponibile, "Ruota comune" dove può coprire (notti lun–ven).
+    // Se nessuno è disponibile, "Ruota comune" dove può coprire (notti). Un posto senza anni è della ruota comune.
     ruotaFallback: ruotaCanCover(d.slot, date),
     manualOnly: false,
     label: SLOT_INFO[d.slot].label,

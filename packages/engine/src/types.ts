@@ -71,6 +71,8 @@ export interface Person {
   id: string;
   name: string;
   bambiInterest: boolean;
+  /** Eccezione personale: non riceve turni di OBI. */
+  noObi?: boolean;
 }
 
 /** Una riga per persona per anno di specializzazione. */

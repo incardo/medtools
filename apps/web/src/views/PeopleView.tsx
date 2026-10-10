@@ -106,6 +106,7 @@ export function PeopleView({ data, setData, month }: ViewProps) {
               <th>Attivo dal</th>
               <th>Attivo fino al</th>
               <th>Bambi</th>
+              <th title="Eccezione personale: il motore non le assegna turni di OBI">No OBI</th>
               <th></th>
             </tr>
           </thead>
@@ -154,6 +155,19 @@ export function PeopleView({ data, setData, month }: ViewProps) {
                           setData((d) => ({
                             ...d,
                             people: d.people.map((x) => (x.id === p.id ? { ...x, bambiInterest: ev.target.checked } : x)),
+                          }))
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        title="Eccezione personale: il motore non le assegna turni di OBI"
+                        checked={!!p.noObi}
+                        onChange={(ev) =>
+                          setData((d) => ({
+                            ...d,
+                            people: d.people.map((x) => (x.id === p.id ? { ...x, noObi: ev.target.checked || undefined } : x)),
                           }))
                         }
                       />

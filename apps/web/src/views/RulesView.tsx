@@ -4,7 +4,9 @@ import {
   ABSENCE_INFO,
   ABSENCE_LIMITS,
   MAX_WEEKENDS,
+  NIGHT_WEEKEND,
   OPTIONAL_WARDS,
+  SUPER_FESTIVI,
   COLUMNS,
   COST,
   RUNS,
@@ -43,7 +45,6 @@ function notes(pos: Position): string[] {
   if (pos.manualOnly) {
     if (pos.slot === 'BAMBI') return ['a mano, solo interessati', 'fuori bilanciamento'];
     if (OPTIONAL_WARDS.includes(pos.slot)) return ['a mano, tutto il giorno', 'fuori bilanciamento'];
-    if (pos.slot === 'PS_NOTTE') return ['a mano: ruota comune', 'o un IV anno', '(conta come notte)'];
     return ['a mano'];
   }
   const out: string[] = [];
@@ -56,7 +57,7 @@ function notes(pos: Position): string[] {
   else if (pos.slot === 'PS_NOTTE' && pos.prevDaySlot) out.push('chi ha fatto gli alti sab');
   else if (pos.prevDaySlot) out.push('scambio col sabato');
   if (pos.notPrevDay) out.push('≠ sabato');
-  if (pos.ruotaFallback) out.push('se nessuno: ruota comune');
+  if (pos.ruotaFallback && pos.years.length) out.push('se nessuno: ruota comune');
   return out;
 }
 
@@ -81,7 +82,8 @@ export function RulesView({ data, month }: ViewProps) {
       <h3>Chi copre ogni posto (settimana tipo)</h3>
       <div className="toolbar">
         <p className="hint">
-          Le regole seguono l'<b>anno di corso</b>, non le persone. Il colore dice quale anno copre il posto.
+          Le regole seguono l'<b>anno di corso</b>, non le persone. Il colore dice quale anno copre il posto. Le notti del weekend
+          cambiano con il weekend del mese (vedi sotto): qui c'è il primo.
         </p>
         <div className="seg" role="group" aria-label="Periodo dell'anno">
           <button className={vPresent ? 'active' : ''} onClick={() => setVPresent(true)}>
@@ -125,6 +127,7 @@ export function RulesView({ data, month }: ViewProps) {
                     );
                   return (
                     <td key={j} className={`rule-cell${weekend}`}>
+                      {!pos.years.length && <span className="chip ruota">Ruota comune</span>}
                       {pos.years.map((y) => (
                         <span key={y} className={`chip y${y}`}>
                           {YEAR_LABEL[y]}
@@ -145,8 +148,7 @@ export function RulesView({ data, month }: ViewProps) {
       </div>
       <ul className="rules-list">
         <li>
-          <b>12h</b>: nel weekend la stessa persona copre mattina e pomeriggio (PS alti e autonomo del V anno, PS del III anno, OBI, Ped
-          Urg).
+          <b>12h</b>: nel weekend la stessa persona copre mattina e pomeriggio (PS alti del V anno, PS del III anno, OBI, Ped Urg).
         </li>
         <li>
           <b>Blocco Ped Urg</b> del IV anno: la stessa persona da venerdì pomeriggio a lunedì mattina (ven P, sab 12h, dom 12h, lun M). Se non
@@ -157,13 +159,13 @@ export function RulesView({ data, month }: ViewProps) {
           altro III anno).
         </li>
         <li>
-          <b>V anno in PS</b>: ogni giorno, mattina e pomeriggio, uno agli <b>alti</b> e uno <b>autonomo</b> (colonna obbligatoria, conta nel
-          bilanciamento). Il venerdì mattina tre V anno (due agli alti e uno autonomo); il venerdì pomeriggio solo l'autonomo (alti al IV,
+          <b>V anno in PS</b>: dal lunedì al venerdì, mattina e pomeriggio, uno agli <b>alti</b> e uno <b>autonomo</b> (conta nel
+          bilanciamento); nel weekend l'autonomo non c'è. Il venerdì mattina tre V anno (due agli alti e uno autonomo); il venerdì pomeriggio solo l'autonomo (alti al IV,
           verdi al III).
         </li>
         <li>
           <b>Weekend del V anno</b>: chi fa la <b>notte di venerdì</b> fa la <b>domenica gli alti 12h</b>; chi fa gli <b>alti 12h il sabato</b>{' '}
-          fa la <b>notte di domenica</b>; la notte di sabato ruota tra i V anno. Sono preferenze forti: se la persona non è disponibile, il
+          fa la <b>notte di domenica</b> (nei weekend in cui la notte è del V anno); la notte di sabato ruota tra i V anno. Sono preferenze forti: se la persona non è disponibile, il
           posto va a un altro V anno. La domenica agli alti c'è sempre una persona diversa dal sabato.
         </li>
         <li>
@@ -175,10 +177,39 @@ export function RulesView({ data, month }: ViewProps) {
           prima a chi ne ha fatti meno nell'anno.
         </li>
         <li>
-          <b>Notti in PS</b>: tutte le notti un <b>V anno</b>, bilanciate tra le persone del V anno. Il secondo posto: sabato e domenica un{' '}
-          <b>IV anno</b>, scelto dal motore; dal lunedì al venerdì a mano, la <b>ruota comune</b> (si scrive il nome) oppure un{' '}
-          <b>IV anno</b>. Uno specializzando nel secondo posto conta come una notte, nella panoramica e nel bilanciamento, e valgono per lui
-          le regole per tutti (smonto compreso). Se nessun V anno è disponibile, lun–ven va la ruota comune.
+          <b>Notti in PS</b>, due posti: lunedì, mercoledì e venerdì <b>V anno + ruota comune</b>; martedì e giovedì <b>V + IV anno</b>.
+          Nel weekend (sabato e domenica notte) dipende dal weekend del mese, contato dal sabato (la domenica va con il suo sabato):
+          <table className="rules-small">
+            <tbody>
+              {Object.entries(NIGHT_WEEKEND).map(([n, pair]) => (
+                <tr key={n}>
+                  <td>{n}° weekend</td>
+                  <td>
+                    {pair.map((w) =>
+                      w === 'R' ? (
+                        <span key={w} className="chip ruota">
+                          Ruota comune
+                        </span>
+                      ) : (
+                        <span key={w} className={`chip y${w}`}>
+                          {YEAR_LABEL[w]}
+                        </span>
+                      ),
+                    )}
+                    {n === '5' && <small className="note">come il primo</small>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <b>Super festivi</b> ({SUPER_FESTIVI.map((d) => d.split('-').reverse().join('/')).join(', ')}): la notte solo <b>V + IV anno</b>,
+          senza ruota comune. Le notti sono bilanciate dentro ogni anno di corso; il nome della ruota comune si scrive nella cella. Uno
+          specializzando messo a mano al posto della ruota conta come una notte, e valgono per lui le regole per tutti (smonto compreso). Se
+          nessuno dell'anno previsto è disponibile, dal lunedì al venerdì va la ruota comune.
+        </li>
+        <li>
+          <b>Eccezioni personali</b>: nella scheda Persone si può togliere l'<b>OBI</b> a una persona; il motore non glielo assegna (a mano
+          resta possibile, con un avviso).
         </li>
         <li>
           <b>Reparti facoltativi</b> (Ortopedia, Radiologia, Anestesia, Chirurgia), dal lunedì al venerdì, tutto il giorno: V o IV anno, a
@@ -201,8 +232,9 @@ export function RulesView({ data, month }: ViewProps) {
           );
         })}
         <li>
-          <span className="chip ruota">Ruota comune</span> solo notti in PS dal lunedì al venerdì: nel secondo posto di notte, oppure nel primo
-          come ripiego quando nessuno dell'anno previsto è disponibile. Non entra nel bilanciamento né nella panoramica.
+          <span className="chip ruota">Ruota comune</span> solo notti in PS: nel secondo posto dove la regola la prevede (lun, mer, ven e il 2° e
+          4° weekend), oppure come ripiego dal lunedì al venerdì quando nessuno dell'anno previsto è disponibile. Mai nei super festivi. Non
+          entra nel bilanciamento né nella panoramica.
         </li>
       </ul>
 

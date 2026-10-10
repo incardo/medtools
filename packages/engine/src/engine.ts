@@ -186,6 +186,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     if (!year || !pos.years.includes(year)) return false;
     const slots = [pos.slot, ...pos.alsoSlots];
     if (roster.unavailableForSlots(p, pos.date, slots)) return false;
+    if (roster.excludedFrom(p, slots)) return false;
     if (board.slots(p, pos.date).length) return false;
     if (board.slots(p, addDays(pos.date, -1)).includes('PS_NOTTE')) return false;
     if (pos.slot === 'PS_NOTTE' && board.slots(p, addDays(pos.date, 1)).length) return false;
@@ -370,7 +371,7 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     const w = (level: Warning['level'], message: string) =>
       out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level, message });
     if (a.who === RUOTA) {
-      if (!ruotaCanCover(a.slot, a.date)) w('error', 'La ruota comune copre solo le notti dal lunedì al venerdì');
+      if (!ruotaCanCover(a.slot, a.date)) w('error', 'La ruota comune copre solo le notti previste (mai nei super festivi)');
       continue;
     }
     // Nome esterno scritto a mano: nessun controllo, non è in anagrafica.
@@ -385,6 +386,8 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
       w(a.source === 'manual' ? 'warn' : 'error', `Il ${['', '', '', 'III', 'IV', 'V'][year]} anno di norma non copre questo turno`);
     const why = roster.unavailableForSlots(a.who, a.date, [a.slot]);
     if (why) w('error', `Non disponibile (${why})`);
+    const excluded = roster.excludedFrom(a.who, [a.slot]);
+    if (excluded) w(a.source === 'manual' ? 'warn' : 'error', `Eccezione personale: ${excluded}`);
     const same = board.slots(a.who, a.date);
     const mine = [...(byPersonDay.get(`${a.who}|${a.date}`) ?? [])].sort().join();
     const twelveH = twelveHours.get(a.date)?.includes(mine) ?? false;
