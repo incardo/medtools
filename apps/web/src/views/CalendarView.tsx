@@ -24,6 +24,7 @@ import {
 import { YEAR_LABEL, cellsToAssignments, engineInput, type Cell } from '../store';
 import { dayLabel, monthLabel, todayISO, type ViewProps } from '../format';
 import { exportExcel } from '../exportExcel';
+import { exportPdf } from '../exportPdf';
 import { GROUP_ENDS, HEADER_DEPTH, headerRows } from '../calendarHeaders';
 import { MyShifts, loadMe, saveMe } from './MyShifts';
 
@@ -161,15 +162,16 @@ export function CalendarView({ data, setData, month }: ViewProps) {
     }, 20);
   };
 
-  const [exporting, setExporting] = useState(false);
-  const exportXlsx = async () => {
-    setExporting(true);
+  const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
+  const exportAs = async (kind: 'xlsx' | 'pdf') => {
+    setExporting(kind);
     try {
-      await exportExcel({ data, month, demand, cells, roster, headers: HEAD_ROWS });
+      const input = { data, month, demand, cells, roster, headers: HEAD_ROWS };
+      await (kind === 'xlsx' ? exportExcel(input) : exportPdf(input));
     } catch (e) {
       alert(`Export non riuscito: ${e instanceof Error ? e.message : e}`);
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -196,8 +198,11 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         >
           Svuota mese
         </button>
-        <button onClick={exportXlsx} disabled={exporting}>
-          {exporting ? 'Preparo il file…' : 'Esporta Excel'}
+        <button onClick={() => exportAs('xlsx')} disabled={!!exporting}>
+          {exporting === 'xlsx' ? 'Preparo il file…' : 'Esporta Excel'}
+        </button>
+        <button onClick={() => exportAs('pdf')} disabled={!!exporting}>
+          {exporting === 'pdf' ? 'Preparo il file…' : 'Esporta PDF'}
         </button>
       </div>
 

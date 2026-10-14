@@ -1,5 +1,5 @@
 import type { Borders, Cell as XCell, Fill, Worksheet } from 'exceljs';
-import { COLUMNS, EXTERNAL, RUOTA, daysOfMonth, isWeekend, keyOf, type Position, type Roster, type Year } from '@medtools/engine';
+import { COLUMNS, EXTERNAL, RUOTA, daysOfMonth, isWeekend, keyOf, type Position, type Roster, type SlotCode, type Year } from '@medtools/engine';
 import { YEAR_LABEL, type AppData, type Cell } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
 import { groupEnds, headerRows, type HeadCell } from './calendarHeaders';
@@ -42,6 +42,24 @@ function headCell(c: XCell, value: string, dark: boolean) {
   c.border = box;
 }
 
+/** Contenuto di una cella del calendario esportato: testo e colore (anno, ruota comune, posto non previsto). */
+export function calendarCell(
+  { data, cells, roster }: Pick<ExcelInput, 'data' | 'cells' | 'roster'>,
+  day: Position[],
+  slot: SlotCode,
+  idx: number,
+): { text: string; color: Year | 'ruota' | 'unused' | null } {
+  const date = day[0].date;
+  const ruotaNames = data.ruotaNames ?? {};
+  const secondNight = slot === 'PS_NOTTE' && idx === 1;
+  const foreseen = day.some((p) => (p.slot === slot || p.alsoSlots.includes(slot)) && p.idx === idx);
+  const who = cells[keyOf({ date, slot, idx })]?.who ?? (secondNight && ruotaNames[date] ? RUOTA : undefined);
+  if (who === RUOTA) return { text: (secondNight && ruotaNames[date]) || 'Ruota comune', color: 'ruota' };
+  if (who?.startsWith(EXTERNAL)) return { text: who.slice(EXTERNAL.length), color: null };
+  if (who) return { text: data.people.find((p) => p.id === who)?.name ?? '?', color: roster.yearOf(who, date) };
+  return { text: '', color: foreseen ? null : 'unused' };
+}
+
 export interface ExcelInput {
   data: AppData;
   month: string;
@@ -56,8 +74,6 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'MedTools';
   wb.created = new Date();
-  const names = new Map(data.people.map((p) => [p.id, p.name]));
-  const ruotaNames = data.ruotaNames ?? {};
   const today = shortDate(new Date().toISOString().slice(0, 10));
   const label = monthLabel(month);
   const Label = label[0].toUpperCase() + label.slice(1);
@@ -116,25 +132,9 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
 
     COLUMNS.forEach(({ slot, idx }, j) => {
       const x = r.getCell(j + 2);
-      let text = '';
-      let bg: string = weekend ? COLOR.weekend : 'FFFFFFFF';
-      const secondNight = slot === 'PS_NOTTE' && idx === 1;
-      const foreseen = day.some((p) => (p.slot === slot || p.alsoSlots.includes(slot)) && p.idx === idx);
-      const who = cells[keyOf({ date, slot, idx })]?.who ?? (secondNight && ruotaNames[date] ? RUOTA : undefined);
-      if (who === RUOTA) {
-        text = (secondNight && ruotaNames[date]) || 'Ruota comune';
-        bg = COLOR.ruota;
-      } else if (who?.startsWith(EXTERNAL)) {
-        text = who.slice(EXTERNAL.length);
-      } else if (who) {
-        text = names.get(who) ?? '?';
-        const y = roster.yearOf(who, date);
-        if (y) bg = COLOR[y];
-      } else if (!foreseen) {
-        bg = COLOR.unused;
-      }
+      const { text, color } = calendarCell({ data, cells, roster }, day, slot, idx);
       x.value = text;
-      x.fill = fill(bg);
+      x.fill = fill(color ? COLOR[color] : weekend ? COLOR.weekend : 'FFFFFFFF');
       x.font = { size: 10, bold: weekend };
       x.alignment = { horizontal: 'center', vertical: 'middle', shrinkToFit: true };
       x.border = groupStarts.has(j + 2) ? { ...box, left: medium } : box;
