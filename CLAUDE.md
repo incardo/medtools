@@ -191,6 +191,7 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
 5. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
 6. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
 7. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026) Lo stesso per i **weekend di OBI** del V anno (06/10/2026).
+8. **Un weekend a tutti**: i posti del weekend vanno prima a chi, nel mese, è disponibile e non ha ancora lavorato un weekend, anche al posto della persona collegata al giorno prima (scambio del III anno, notte di venerdì → domenica). **[detto]** (14/10/2026) Preferenza (`WEIGHTS.weekendShare`, `WEIGHTS.linkBreak`, `COST.noWeekend`), senza avviso.
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
@@ -291,6 +292,8 @@ Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h
 Risolto il 29/09/2026: le "5 notti" del V anno sono **5 notti a settimana** coperte dal gruppo (dom, lun, mar, mer, ven), non un tetto per persona. **Superato il 06/10/2026**: ora il V anno copre tutte le notti.
 
 Risolti il 06/10/2026: autonomo del V anno anche nel weekend; OBI del weekend alla stessa persona con smonto il lunedì; OBI del lunedì al V anno; secondo posto di notte lun–ven resta a mano; Ped Urg mattina del III anno resta; avvisi (non blocchi) per limiti e scadenza delle indisponibilità; reparti facoltativi solo lun–ven, tutto il giorno, fuori dal bilanciamento; alti opzionale tolto.
+
+Cambiato il 14/10/2026: nel weekend precedenza a chi nel mese non ha ancora lavorato un weekend.
 
 Cambiato il 14/10/2026: al massimo una notte a settimana per persona, salvo necessità.
 

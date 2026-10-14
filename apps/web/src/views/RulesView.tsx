@@ -258,6 +258,10 @@ export function RulesView({ data, month }: ViewProps) {
           <b>Smonto dopo il weekend</b>, dove possibile: chi lavora in PS o in OBI sabato e domenica non lavora il lunedì; chi fa Ped Urg 12h
           sabato e domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto.
         </li>
+        <li>
+          <b>Un weekend a tutti</b>: i posti del weekend vanno prima a chi nel mese non ha ancora lavorato un weekend, se è disponibile, anche
+          al posto di chi sarebbe collegato al giorno prima (per esempio lo scambio del III anno la domenica). È una preferenza.
+        </li>
         <li>Un V anno che fa 12h il sabato può fare la notte della domenica.</li>
         <li>Nessuno riceve turni nei giorni in cui non è attivo (prima dell'ingresso o dopo l'uscita).</li>
         <li>
@@ -340,6 +344,14 @@ export function RulesView({ data, month }: ViewProps) {
                 <td>per ogni notte in più nella stessa settimana (lun–dom), anche quella collegata (alti del sabato → notte di domenica)</td>
               </tr>
               <tr>
+                <td>+{WEIGHTS.weekendShare}</td>
+                <td>per un posto di weekend a chi nel mese ha già lavorato un altro weekend</td>
+              </tr>
+              <tr>
+                <td>+{WEIGHTS.linkBreak}</td>
+                <td>a chi è ancora senza weekend, quando prende il posto della persona collegata al giorno prima</td>
+              </tr>
+              <tr>
                 <td>+{WEIGHTS.blockMissing}</td>
                 <td>per ogni giorno collegato (blocco Ped Urg, OBI e PS del weekend) in cui la persona non è disponibile</td>
               </tr>
@@ -373,6 +385,10 @@ export function RulesView({ data, month }: ViewProps) {
               <tr>
                 <td>{COST.weekendCap}</td>
                 <td>per ogni weekend oltre il tetto mensile, per persona</td>
+              </tr>
+              <tr>
+                <td>{COST.noWeekend}</td>
+                <td>per ogni persona disponibile nel weekend che resta senza weekend nel mese</td>
               </tr>
               <tr>
                 <td>{COST.weekNights}</td>

@@ -131,6 +131,10 @@ export const WEIGHTS = {
   weekendCap: 40,
   /** per ogni notte in più nella stessa settimana (lun–dom), anche se collegata (alti del sabato → notte di domenica) */
   weekNights: 60,
+  /** posto di weekend a chi ha già lavorato un altro weekend nel mese: prima chi è ancora a zero */
+  weekendShare: 20,
+  /** a chi è ancora senza weekend, al posto della persona collegata al giorno prima (es. scambio del III anno la domenica) */
+  linkBreak: 10,
   /** per ogni giorno del blocco Ped Urg in cui la persona non è disponibile */
   blockMissing: 10,
   /** per ogni blocco Ped Urg o weekend di OBI già fatto (nella scelta di chi fa il blocco) */
@@ -147,6 +151,8 @@ export const COST = {
   weekendCap: 60,
   /** per ogni notte oltre la prima nella stessa settimana (lun–dom), per persona */
   weekNights: 80,
+  /** per ogni persona disponibile nel weekend che resta senza weekend nel mese */
+  noWeekend: 40,
   /** per ogni blocco (Ped Urg, OBI e PS del weekend, scambio del III anno) spezzato */
   brokenLink: 20,
   /** squilibrio dentro ogni anno di corso (varianza): turni totali */
@@ -227,6 +233,12 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       : (pos.blockAhead ?? []).flatMap((slots, i) => (slots.includes('PS_NOTTE') ? [addDays(pos.date, i + 1)] : []));
   const extraNights = (p: string, pos: Position) => nightsOfPos(pos).filter((d) => board.nightsInWeek(p, d).length > 0).length;
 
+  // Ha già lavorato nel mese un weekend diverso da quelli toccati dal posto.
+  const otherWeekend = (p: string, pos: Position): boolean => {
+    const keys = weekendsOfPos(pos);
+    return keys.length > 0 && [...(weekendDays.get(p) ?? [])].some((d) => !keys.includes(weekendKey(d)));
+  };
+
   const score = (p: string, pos: Position): number => {
     let s = countOf(p)[SLOT_INFO[pos.slot].family] * WEIGHTS.family + totalOf(p) * WEIGHTS.total;
     if (isWeekend(pos.date)) s += weekendOf(p) * WEIGHTS.weekend;
@@ -236,6 +248,8 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     if (overCap(p, pos)) s += WEIGHTS.weekendCap;
     // Al massimo una notte a settimana, salvo necessità.
     s += extraNights(p, pos) * WEIGHTS.weekNights;
+    // Weekend: prima a chi nel mese non ne ha ancora fatto uno.
+    if (otherWeekend(p, pos)) s += WEIGHTS.weekendShare;
     return s + rng() * 1.5;
   };
 
@@ -300,8 +314,11 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       pending = pending.filter((p) => p !== pos);
 
       if (cands.length) {
-        const pool = linked.length ? linked : cands;
-        const who = pool.reduce((a, b) => (score(a, pos) <= score(b, pos) ? a : b));
+        // Di norma chi è collegato al giorno prima; nel weekend anche chi nel mese è ancora senza weekend.
+        const zero = linked.length && weekendsOfPos(pos).length ? cands.filter((p) => !linked.includes(p) && !weekendDays.get(p)?.size) : [];
+        const pool = linked.length ? [...linked, ...zero] : cands;
+        const s = (p: string) => score(p, pos) + (zero.includes(p) ? WEIGHTS.linkBreak : 0);
+        const who = pool.reduce((a, b) => (s(a) <= s(b) ? a : b));
         assign(who, pos);
       } else if (pos.ruotaFallback) {
         out.push({ date: pos.date, slot: pos.slot, idx: pos.idx, who: RUOTA, source: 'suggested' });
@@ -326,6 +343,18 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   for (const a of out) {
     if (a.slot === 'PS_NOTTE' && isPerson(a.who) && board.nightsInWeek(a.who, a.date)[0] !== a.date) doubleNights++;
   }
+  // Chi poteva coprire almeno un posto del weekend (anno, disponibilità, attività) ma è rimasto a zero.
+  const weekendEligible = new Set<string>();
+  for (const pos of demand.flat()) {
+    if (pos.manualOnly || !isWeekend(pos.date)) continue;
+    const slots = [pos.slot, ...pos.alsoSlots];
+    for (const { person, year } of roster.activeOn(pos.date)) {
+      if (pos.years.includes(year) && !roster.unavailableForSlots(person.id, pos.date, slots) && !roster.excludedFrom(person.id, slots))
+        weekendEligible.add(person.id);
+    }
+  }
+  let noWeekend = 0;
+  for (const p of weekendEligible) if (!weekendDays.get(p)?.size) noWeekend++;
   let overWeekends = 0;
   for (const [p, days] of weekendDays) {
     const cap = MAX_WEEKENDS[roster.yearOf(p, [...days][0]) ?? 3];
@@ -344,6 +373,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       restViolations * COST.weekendRest +
       overWeekends * COST.weekendCap +
       doubleNights * COST.weekNights +
+      noWeekend * COST.noWeekend +
       brokenLinks * COST.brokenLink +
       spread,
   };

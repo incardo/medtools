@@ -445,6 +445,24 @@ describe('motore', () => {
     expect(ws.map((w) => [w.date, w.level])).toEqual([['2026-11-21', 'warn']]);
   });
 
+  it('nessuno resta senza weekend nel mese', () => {
+    for (const e of input.enrollments) {
+      const days = res.assignments.filter((a) => a.who === e.personId && isWeekend(a.date)).map((a) => a.date);
+      expect([e.personId, countWeekends(days)]).not.toEqual([e.personId, 0]);
+    }
+  });
+
+  it('il weekend va prima a chi nel mese non ne ha ancora fatto uno, anche se è disponibile un solo giorno', () => {
+    const third = input.enrollments.filter((e) => e.year === 3).map((e) => e.personId);
+    const weekendDays = daysOfMonth('2026-11').filter(isWeekend);
+    // Due III anno disponibili solo domenica 29.
+    const absences = third.slice(0, 2).flatMap((personId) =>
+      weekendDays.filter((d) => d !== '2026-11-29').map((date) => ({ personId, date, kind: 'X' as const })),
+    );
+    const r = suggestMonth(exampleInput({ absences }));
+    for (const p of third.slice(0, 2)) expect(r.assignments.some((a) => a.who === p && a.date === '2026-11-29')).toBe(true);
+  });
+
   it('bilancia i giorni di weekend lavorati dentro ogni anno di corso', () => {
     for (const year of [5, 4, 3]) {
       const ids = input.enrollments.filter((e) => e.year === year).map((e) => e.personId);
