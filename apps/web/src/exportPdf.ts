@@ -1,7 +1,10 @@
 import type { CellDef } from 'jspdf-autotable';
-import { COLUMNS, isWeekend } from '@medtools/engine';
+import { COLUMNS, daysOfMonth, isWeekend, type Year } from '@medtools/engine';
+import { YEAR_LABEL } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
 import { calendarCell, type ExcelInput } from './exportExcel';
+import { headerRows } from './calendarHeaders';
+import { SUMMARY_COLS, SUMMARY_HEADERS, summarize, summaryValue } from './summary';
 
 /** Stessi colori dell'export Excel (e di styles.css), in RGB. */
 const COLOR = {
@@ -20,7 +23,7 @@ const COLOR = {
 
 type RGB = [number, number, number];
 
-/** Calendario del mese in PDF, A4 orizzontale, come il foglio "Turni" dell'Excel. */
+/** Calendario del mese in PDF, A4 orizzontale, come il foglio "Turni" dell'Excel; nella seconda pagina il riepilogo per persona. */
 export async function exportPdf({ data, month, demand, cells, roster, headers }: ExcelInput) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -123,6 +126,88 @@ export async function exportPdf({ data, month, demand, cells, roster, headers }:
     doc.setLineWidth(0.1);
     doc.rect(x, y, 24, 4.5, 'FD');
     doc.text(t, x + 12, y + 3.1, { align: 'center' });
+  });
+
+  // ---------- Pagina 2: riepilogo per persona, come il foglio "Riepilogo" dell'Excel ----------
+  doc.addPage();
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...COLOR.head);
+  doc.text(`Riepilogo turni · ${Label}`, margin, 12);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLOR.muted);
+  doc.text(
+    doc.splitTextToSize(
+      'Turni del mese per tipo; mattina e pomeriggio insieme. Un turno da 12h conta come due. Sab/dom: Giorni = giorni di sabato o domenica lavorati (non weekend); Weekend = weekend distinti con almeno un turno. Il totale esclude Bambi e i reparti facoltativi; la ruota comune non è conteggiata.',
+      pageW - 2 * margin,
+    ),
+    margin,
+    16.5,
+  );
+
+  const sumHead = headerRows(SUMMARY_HEADERS);
+  const sumHeadCells: CellDef[][] = sumHead.map((row, r) => {
+    const cellsOfRow: CellDef[] = row.map((h) => ({
+      content: h.label,
+      colSpan: h.colSpan,
+      rowSpan: h.rowSpan,
+      styles: r === 0 ? { fillColor: COLOR.head as RGB, textColor: 255 } : { fillColor: COLOR.subhead as RGB, textColor: COLOR.head as RGB },
+    }));
+    const lead = (content: string): CellDef => ({
+      content,
+      rowSpan: sumHead.length,
+      styles: { fillColor: COLOR.head as RGB, textColor: 255, valign: 'middle' },
+    });
+    return r === 0 ? [lead('Persona'), lead('Anno'), ...cellsOfRow] : cellsOfRow;
+  });
+
+  const sums = summarize(data, [month]);
+  const days = daysOfMonth(month);
+  const people = data.people
+    .map((p) => {
+      const first = days.find((d) => roster.yearOf(p.id, d));
+      return first ? { p, year: roster.yearOf(p.id, first)! as Year } : null;
+    })
+    .filter((x) => x !== null)
+    .sort((a, b) => b.year - a.year || a.p.name.localeCompare(b.p.name));
+  const totalCol = 2 + SUMMARY_COLS.indexOf('total');
+  // Ultima persona di ogni anno di corso: riga più spessa sotto.
+  const lastOfYear = new Set(people.map((x, i) => (people[i + 1]?.year !== x.year ? i : -1)).filter((i) => i >= 0));
+
+  const sumBody: CellDef[][] = people.map(({ p, year }) => [
+    { content: p.name, styles: { fillColor: [...COLOR[year]] as RGB, fontStyle: 'bold', halign: 'left' } },
+    { content: YEAR_LABEL[year], styles: { fillColor: [...COLOR[year]] as RGB } },
+    ...SUMMARY_COLS.map((c, i): CellDef => {
+      const v = summaryValue(sums[p.id], c);
+      return { content: String(v), styles: { textColor: v === 0 ? (COLOR.border as RGB) : 20, fontStyle: 2 + i === totalCol ? 'bold' : 'normal' } };
+    }),
+  ]);
+
+  autoTable(doc, {
+    head: sumHeadCells,
+    body: sumBody,
+    startY: 24,
+    margin: { left: margin, right: margin, top: 10, bottom: 10 },
+    theme: 'grid',
+    styles: {
+      fontSize: 7,
+      cellPadding: 0.9,
+      halign: 'center',
+      valign: 'middle',
+      lineColor: COLOR.border as RGB,
+      lineWidth: 0.1,
+      textColor: 20,
+    },
+    headStyles: { fontStyle: 'bold', fontSize: 6.5, halign: 'center', valign: 'middle' },
+    columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 10 } },
+    didDrawCell: (h) => {
+      if (h.section === 'body' && lastOfYear.has(h.row.index)) {
+        doc.setDrawColor(91, 102, 117);
+        doc.setLineWidth(0.5);
+        doc.line(h.cell.x, h.cell.y + h.cell.height, h.cell.x + h.cell.width, h.cell.y + h.cell.height);
+      }
+    },
   });
 
   // Piè di pagina su ogni pagina.
