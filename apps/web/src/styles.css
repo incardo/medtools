@@ -581,6 +581,13 @@ td.strong {
 .overview th.name {
   min-width: 170px;
 }
+.overview td.period {
+  text-align: center;
+  white-space: nowrap;
+  padding: 4px 6px;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
 .seg {
   display: inline-flex;
   border: 1px solid var(--border);

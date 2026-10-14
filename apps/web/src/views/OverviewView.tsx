@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { MAX_WEEKENDS, daysOfMonth, demandForMonth, makeRoster, monthsOfAcademicYear, type Person, type Year } from '@medtools/engine';
 import { YEAR_LABEL, academicYearFor, engineInput } from '../store';
-import { monthLabel, type ViewProps } from '../format';
+import { monthLabel, shortDate, type ViewProps } from '../format';
 import { groupEnds, headerRows } from '../calendarHeaders';
 import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_TURNS, slotsByYear, summarize, summaryValue, turnSlots, WARD_KEYS, type SummaryCol } from '../summary';
 
@@ -77,6 +77,12 @@ export function OverviewView({ data, month }: ViewProps) {
     return Math.max(0, ...ABSENCE_COLS.flatMap((col) => ids.map((id) => summaryValue(sums[id], col))));
   }, [groups, sums]);
 
+  // Periodo di attività nell'anno di specializzazione (un'iscrizione per persona e anno).
+  const periods = useMemo(
+    () => new Map(data.enrollments.filter((e) => e.academicYear === ay.id).map((e) => [e.personId, e])),
+    [data.enrollments, ay.id],
+  );
+
   const cls = (col: number, extra = '') =>`num${ENDS.has(col) ? ' gend' : ''}${extra}`;
 
   return (
@@ -112,9 +118,17 @@ export function OverviewView({ data, month }: ViewProps) {
             {HEAD_ROWS.map((row, r) => (
               <tr key={r}>
                 {r === 0 && (
-                  <th rowSpan={HEAD_ROWS.length} className="sticky">
-                    Persona
-                  </th>
+                  <>
+                    <th rowSpan={HEAD_ROWS.length} className="sticky">
+                      Persona
+                    </th>
+                    <th rowSpan={HEAD_ROWS.length} title="Data di ingresso nell'anno di specializzazione">
+                      Dal
+                    </th>
+                    <th rowSpan={HEAD_ROWS.length} className="gend" title="Ultimo giorno di attività (vuoto = fino a fine anno)">
+                      Al
+                    </th>
+                  </>
                 )}
                 {row.map((h) => (
                   <th
@@ -139,6 +153,8 @@ export function OverviewView({ data, month }: ViewProps) {
                       {people.length} {people.length === 1 ? 'persona' : 'persone'} · media
                     </span>
                   </th>
+                  <td />
+                  <td className="gend" />
                   {SUMMARY_COLS.map((col, i) => {
                     const s = stats.get(col);
                     return (
@@ -151,6 +167,8 @@ export function OverviewView({ data, month }: ViewProps) {
                 {people.map((p) => (
                   <tr key={p.id}>
                     <th className="sticky name">{p.name}</th>
+                    <td className="period muted">{periods.has(p.id) ? shortDate(periods.get(p.id)!.activeFrom) : ''}</td>
+                    <td className="period muted gend">{periods.get(p.id)?.activeTo ? shortDate(periods.get(p.id)!.activeTo!) : '–'}</td>
                     {SUMMARY_COLS.map((col, i) => {
                       const v = summaryValue(sums[p.id], col);
                       const s = stats.get(col);
