@@ -163,8 +163,8 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>V anno in PS</b>: dal lunedì al venerdì, mattina e pomeriggio, uno agli <b>alti</b> e uno <b>autonomo</b> (conta nel
-          bilanciamento); nel weekend l'autonomo non c'è. Il venerdì mattina tre V anno (due agli alti e uno autonomo); il venerdì pomeriggio solo l'autonomo (alti al IV,
-          verdi al III).
+          bilanciamento); nel weekend l'autonomo non c'è. Il venerdì mattina tre V anno (due agli alti e uno autonomo); il venerdì pomeriggio uno agli alti (con un IV) e
+          uno autonomo; i verdi al III.
         </li>
         <li>
           <b>Weekend del V anno</b>: chi fa la <b>notte di venerdì</b> fa la <b>domenica gli alti 12h</b>; chi fa gli <b>alti 12h il sabato</b>{' '}

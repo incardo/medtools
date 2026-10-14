@@ -95,7 +95,7 @@ describe('regole per anno (domanda giornaliera)', () => {
     expect(ps('2026-11-05', 'M')).toEqual([[5], [4], [3], [5]]); // gio
     expect(ps('2026-11-05', 'P')).toEqual([[5], [3], [4], [5]]);
     expect(ps('2026-11-06', 'M')).toEqual([[5], [5], [4], [5]]); // ven: 3 V anno
-    expect(ps('2026-11-06', 'P')).toEqual([[4], undefined, [3], [5]]); // ven: un solo alti
+    expect(ps('2026-11-06', 'P')).toEqual([[5], [4], [3], [5]]); // ven: alti V + IV
   });
 
   it('ogni posto ha un anno (tranne Bambi e reparti facoltativi, a mano, e la ruota comune)', () => {

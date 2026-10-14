@@ -114,14 +114,14 @@ type Draft = Omit<Position, 'date' | 'alsoSlots' | 'ruotaFallback' | 'manualOnly
 
 /**
  * PS feriale: per ogni giorno (1 = lunedì) e fascia, chi copre i posti alti, il posto verdi e l'autonomo.
- * Il venerdì mattina due alti al V anno (il III fa l'ambulatorio); il venerdì pomeriggio un solo alti (IV).
+ * Il venerdì mattina due alti al V anno (il III fa l'ambulatorio); il venerdì pomeriggio alti V + IV.
  */
 const PS_FERIALE: Record<number, Record<'M' | 'P', { alti: Year[]; verdi: Year; auto: Year }>> = {
   1: { M: { alti: [5, 3], verdi: 4, auto: 5 }, P: { alti: [5, 4], verdi: 3, auto: 5 } },
   2: { M: { alti: [5, 4], verdi: 3, auto: 5 }, P: { alti: [5, 3], verdi: 4, auto: 5 } },
   3: { M: { alti: [5, 3], verdi: 4, auto: 5 }, P: { alti: [5, 4], verdi: 3, auto: 5 } },
   4: { M: { alti: [5, 4], verdi: 3, auto: 5 }, P: { alti: [5, 3], verdi: 4, auto: 5 } },
-  5: { M: { alti: [5, 5], verdi: 4, auto: 5 }, P: { alti: [4], verdi: 3, auto: 5 } },
+  5: { M: { alti: [5, 5], verdi: 4, auto: 5 }, P: { alti: [5, 4], verdi: 3, auto: 5 } },
 };
 
 /**

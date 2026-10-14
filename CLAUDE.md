@@ -76,7 +76,7 @@ Il motore assegna una persona solo nei giorni in cui è attiva. Chi entra a met�
 
 | Codice | Significato | Note |
 |---|---|---|
-| `PS_ALTI_M` / `PS_ALTI_P` | PS codici alti, mattina / pomeriggio | 2 posti alti per fascia; venerdì pomeriggio 1 (IV) |
+| `PS_ALTI_M` / `PS_ALTI_P` | PS codici alti, mattina / pomeriggio | 2 posti alti per fascia; venerdì pomeriggio V + IV **[detto]** (14/10/2026) |
 | `PS_AUTO_M` / `PS_AUTO_P` | PS **autonomo**, mattina / pomeriggio | **V anno**, **lun–ven** (nel weekend non c'è, 10/10/2026); **conta nel bilanciamento** **[detto]** (06/10/2026) |
 | `PS_VERDI_M` / `PS_VERDI_P` | PS codici bassi ("verdista"), mattina / pomeriggio | 1 posto per fascia |
 | `PS_NOTTE` | PS notte | |
@@ -109,7 +109,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 
 - Organico: **14–15 persone**.
 - PS **tutti i giorni**, mattina e pomeriggio: **uno agli alti** (nel weekend 12h) e, dal lunedì al venerdì, **uno autonomo** (`PS_AUTO`, conta nel bilanciamento). **Nel weekend l'autonomo non è coperto.** **[detto]** (10/10/2026)
-- **Venerdì mattina**: **tre** V anno, due agli alti e uno autonomo. **Venerdì pomeriggio**: solo l'**autonomo** (alti al IV, verdi al III).
+- **Venerdì mattina**: **tre** V anno, due agli alti e uno autonomo. **Venerdì pomeriggio**: uno agli **alti** (con un IV) e uno **autonomo**; verdi al III. **[detto]** (14/10/2026)
 - **OBI** mattina **e** pomeriggio, solo V anno, anche il lunedì. Nel **weekend** l'OBI lo copre **la stessa persona sabato e domenica** (12h al giorno), con **smonto il lunedì**; i weekend di OBI **ruotano** tra i V anno, così ogni weekend c'è una persona diversa nei vari mesi (va prima a chi ne ha fatti meno nell'anno).
 - **Al massimo 2 weekend al mese** per persona; anche **una sola giornata** conta come weekend (due sabati = tetto raggiunto). **[detto]** (06/10/2026) È una preferenza forte (`MAX_WEEKENDS`, `WEIGHTS.weekendCap`, `COST.weekendCap`), con avviso nel calendario se superato. Senza l'autonomo nel weekend (10/10/2026) ogni weekend impegna 4–5 V anno diversi (alti sab, alti dom = notte di ven, OBI, notti di sab e dom se sono del V anno).
 - **Notti**: tutte le notti dal lunedì al venerdì e le notti dei weekend del ciclo con il V anno (vedi "Notti"), distribuite in modo **bilanciato**.
@@ -134,7 +134,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 - PS codici bassi (verdi): **un III anno**.
 - I due III anno fanno 12h ciascuno (alti e verdi) e la domenica si scambiano. **[detto]** Nel motore lo scambio è una preferenza: se uno dei due non è disponibile la domenica, il posto va a un altro III anno.
 
-### PS feriale: schema risultante (06/10/2026)
+### PS feriale: schema risultante (14/10/2026)
 
 | | Mattina: alti | Mattina: verdi | Mattina: autonomo | Pomeriggio: alti | Pomeriggio: verdi | Pomeriggio: autonomo |
 |---|---|---|---|---|---|---|
@@ -142,7 +142,7 @@ Le regole seguono l'anno di corso, non i nomi (vedi sezione 3).
 | Mar | V + IV | III | V | V + III | IV | V |
 | Mer | V + III | IV | V | V + IV | III | V |
 | Gio | V + IV | III | V | V + III | IV | V |
-| Ven | V + V | IV | V | IV | III | V |
+| Ven | V + V | IV | V | V + IV | III | V |
 
 Ogni posto PS feriale ha un anno di corso. In codice: `PS_FERIALE` in `packages/engine/src/rules.ts`.
 
@@ -290,6 +290,8 @@ Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h
 Risolto il 29/09/2026: le "5 notti" del V anno sono **5 notti a settimana** coperte dal gruppo (dom, lun, mar, mer, ven), non un tetto per persona. **Superato il 06/10/2026**: ora il V anno copre tutte le notti.
 
 Risolti il 06/10/2026: autonomo del V anno anche nel weekend; OBI del weekend alla stessa persona con smonto il lunedì; OBI del lunedì al V anno; secondo posto di notte lun–ven resta a mano; Ped Urg mattina del III anno resta; avvisi (non blocchi) per limiti e scadenza delle indisponibilità; reparti facoltativi solo lun–ven, tutto il giorno, fuori dal bilanciamento; alti opzionale tolto.
+
+Cambiato il 14/10/2026: il venerdì pomeriggio il secondo posto agli alti è del V anno (prima era scoperto).
 
 Cambiati il 10/10/2026: niente autonomo nel weekend; notti con ruota comune lun/mer/ven e IV anno mar/gio; notti del weekend in un ciclo continuo di 4 weekend (V + IV, IV + RC, V + IV, V + RC); nei weekend IV + RC il V anno degli alti del sabato non fa la notte di domenica; super festivi solo V + IV; esclusione personale dall'OBI.
 
