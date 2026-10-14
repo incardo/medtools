@@ -38,6 +38,11 @@ export function weekendKey(date: string): string {
   return weekday(date) === 0 ? addDays(date, -1) : date;
 }
 
+/** Lunedì della settimana (lun–dom) che contiene la data. */
+export function weekStart(date: string): string {
+  return addDays(date, -((weekday(date) + 6) % 7));
+}
+
 /** Weekend distinti (anche una sola giornata) tra i giorni dati. */
 export function countWeekends(days: Iterable<string>): number {
   const keys = new Set<string>();

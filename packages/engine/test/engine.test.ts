@@ -20,6 +20,7 @@ import {
   weekendCycle,
   suggestMonth,
   validate,
+  weekStart,
   weekday,
   type Assignment,
 } from '../src';
@@ -414,6 +415,23 @@ describe('motore', () => {
   it('il calendario suggerito non ha errori di validazione', () => {
     const errors = validate(input, res.assignments).filter((w) => w.level === 'error');
     expect(errors).toEqual([]);
+  });
+
+  it('di norma al massimo una notte a settimana (lun–dom) per persona', () => {
+    const perWeek = new Map<string, number>();
+    for (const a of res.assignments) {
+      if (a.slot !== 'PS_NOTTE' || a.who === RUOTA) continue;
+      const k = `${a.who}|${weekStart(a.date)}`;
+      perWeek.set(k, (perWeek.get(k) ?? 0) + 1);
+    }
+    expect([...perWeek].filter(([, n]) => n > 1)).toEqual([]);
+  });
+
+  it('segnala due notti nella stessa settimana', () => {
+    const v = input.enrollments.find((e) => e.year === 5)!.personId;
+    const nights: Assignment[] = ['2026-11-02', '2026-11-05'].map((date) => ({ date, slot: 'PS_NOTTE', idx: 0, who: v, source: 'manual' }));
+    const ws = validate(input, nights).filter((w) => w.message.startsWith('Più di una notte'));
+    expect(ws.map((w) => w.date)).toEqual(['2026-11-05']);
   });
 
   it('V anno: al massimo 2 weekend nel mese (anche una sola giornata conta)', () => {

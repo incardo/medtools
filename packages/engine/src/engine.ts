@@ -1,4 +1,4 @@
-import { addDays, countWeekends, daysOfMonth, isWeekend, weekday, weekendKey } from './dates';
+import { addDays, countWeekends, daysOfMonth, isWeekend, weekStart, weekday, weekendKey } from './dates';
 import { Roster } from './roster';
 import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rules';
 import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
@@ -36,6 +36,12 @@ class Board {
   /** Ha fatto il posto collegato (`prevDaySlot`, `prevDays` giorni prima). */
   linked(personId: string, pos: Position): boolean {
     return !!pos.prevDaySlot && this.slots(personId, addDays(pos.date, -(pos.prevDays ?? 1))).includes(pos.prevDaySlot);
+  }
+
+  /** Giorni con una notte in PS nella settimana (lun–dom) che contiene `date`. */
+  nightsInWeek(personId: string, date: string): string[] {
+    const monday = weekStart(date);
+    return [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i)).filter((d) => this.slots(personId, d).includes('PS_NOTTE'));
   }
 
   /** Lavora in PS sia sabato sia domenica prima del lunedì `monday`. */
@@ -123,6 +129,8 @@ export const WEIGHTS = {
   weekendRest: 8,
   /** se il posto porta un V anno oltre il tetto di weekend nel mese (anche una sola giornata conta come weekend) */
   weekendCap: 40,
+  /** per ogni notte in più nella stessa settimana (lun–dom), anche se collegata (alti del sabato → notte di domenica) */
+  weekNights: 60,
   /** per ogni giorno del blocco Ped Urg in cui la persona non è disponibile */
   blockMissing: 10,
   /** per ogni blocco Ped Urg o weekend di OBI già fatto (nella scelta di chi fa il blocco) */
@@ -137,6 +145,8 @@ export const COST = {
   weekendRest: 15,
   /** per ogni weekend oltre il tetto mensile, per persona */
   weekendCap: 60,
+  /** per ogni notte oltre la prima nella stessa settimana (lun–dom), per persona */
+  weekNights: 80,
   /** per ogni blocco (Ped Urg, OBI e PS del weekend, scambio del III anno) spezzato */
   brokenLink: 20,
   /** squilibrio dentro ogni anno di corso (varianza): turni totali */
@@ -210,6 +220,13 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     return added.length > 0 && mine.size + added.length > cap;
   };
 
+  // Notti portate da un posto: la sua, o quella collegata (alti del sabato → notte di domenica).
+  const nightsOfPos = (pos: Position): string[] =>
+    pos.slot === 'PS_NOTTE'
+      ? [pos.date]
+      : (pos.blockAhead ?? []).flatMap((slots, i) => (slots.includes('PS_NOTTE') ? [addDays(pos.date, i + 1)] : []));
+  const extraNights = (p: string, pos: Position) => nightsOfPos(pos).filter((d) => board.nightsInWeek(p, d).length > 0).length;
+
   const score = (p: string, pos: Position): number => {
     let s = countOf(p)[SLOT_INFO[pos.slot].family] * WEIGHTS.family + totalOf(p) * WEIGHTS.total;
     if (isWeekend(pos.date)) s += weekendOf(p) * WEIGHTS.weekend;
@@ -217,6 +234,8 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     // Blocco Ped Urg: meglio chi è disponibile anche nei giorni successivi del blocco.
     s += blockMissing(p, pos) * WEIGHTS.blockMissing;
     if (overCap(p, pos)) s += WEIGHTS.weekendCap;
+    // Al massimo una notte a settimana, salvo necessità.
+    s += extraNights(p, pos) * WEIGHTS.weekNights;
     return s + rng() * 1.5;
   };
 
@@ -303,6 +322,10 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       if (pos.prevDaySlot && who && who !== RUOTA && !board.linked(who, pos)) brokenLinks++;
     }
   }
+  let doubleNights = 0;
+  for (const a of out) {
+    if (a.slot === 'PS_NOTTE' && isPerson(a.who) && board.nightsInWeek(a.who, a.date)[0] !== a.date) doubleNights++;
+  }
   let overWeekends = 0;
   for (const [p, days] of weekendDays) {
     const cap = MAX_WEEKENDS[roster.yearOf(p, [...days][0]) ?? 3];
@@ -320,6 +343,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
       holes.length * COST.hole +
       restViolations * COST.weekendRest +
       overWeekends * COST.weekendCap +
+      doubleNights * COST.weekNights +
       brokenLinks * COST.brokenLink +
       spread,
   };
@@ -394,6 +418,10 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     if (same.length > 1 && !twelveH) w('error', 'Più turni nello stesso giorno');
     if (board.slots(a.who, addDays(a.date, -1)).includes('PS_NOTTE')) w('error', 'Smonto notte non rispettato');
     if (board.weekendRestDue(a.who, a.date)) w('warn', 'Smonto dopo il weekend non rispettato');
+    if (a.slot === 'PS_NOTTE') {
+      const nights = board.nightsInWeek(a.who, a.date);
+      if (nights[0] !== a.date) w('warn', `Più di una notte nella stessa settimana (${nights.length})`);
+    }
   }
 
   // Posti scritti a mano in giorni in cui non esistono (es. alti opzionale nel weekend).

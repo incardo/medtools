@@ -183,13 +183,14 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
 
 1. Una persona con un turno assegnato **non riceve altri turni lo stesso giorno**.
 2. Chi fa la **notte** non lavora né il giorno stesso né il giorno dopo.
-3. **Smonto dopo il weekend**, **dove possibile** (preferenza, non vincolo assoluto): **[detto]**
+3. **Al massimo una notte in PS a settimana** (lunedì–domenica) per persona, **salvo necessità estrema**. **[detto]** (14/10/2026) Preferenza forte (`WEIGHTS.weekNights`, `COST.weekNights`): cede solo per non lasciare un posto scoperto; avviso nel calendario se superato. Vale anche per il posto collegato (alti del sabato → notte di domenica).
+4. **Smonto dopo il weekend**, **dove possibile** (preferenza, non vincolo assoluto): **[detto]**
    - chi lavora in **PS sia sabato sia domenica** non lavora il **lunedì**;
    - chi fa **OBI sia sabato sia domenica** non lavora il **lunedì** **[detto]** (06/10/2026);
    - chi fa **Ped Urg 12 ore (mattina + pomeriggio) sia sabato sia domenica** non lavora il **martedì**.
-4. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
-5. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
-6. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026) Lo stesso per i **weekend di OBI** del V anno (06/10/2026).
+5. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
+6. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
+7. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026) Lo stesso per i **weekend di OBI** del V anno (06/10/2026).
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
@@ -290,6 +291,8 @@ Risolti il 28/09/2026 (quarto giro): PS del III anno nel weekend (12h alti + 12h
 Risolto il 29/09/2026: le "5 notti" del V anno sono **5 notti a settimana** coperte dal gruppo (dom, lun, mar, mer, ven), non un tetto per persona. **Superato il 06/10/2026**: ora il V anno copre tutte le notti.
 
 Risolti il 06/10/2026: autonomo del V anno anche nel weekend; OBI del weekend alla stessa persona con smonto il lunedì; OBI del lunedì al V anno; secondo posto di notte lun–ven resta a mano; Ped Urg mattina del III anno resta; avvisi (non blocchi) per limiti e scadenza delle indisponibilità; reparti facoltativi solo lun–ven, tutto il giorno, fuori dal bilanciamento; alti opzionale tolto.
+
+Cambiato il 14/10/2026: al massimo una notte a settimana per persona, salvo necessità.
 
 Cambiato il 14/10/2026: il venerdì pomeriggio il secondo posto agli alti è del V anno (prima era scoperto).
 

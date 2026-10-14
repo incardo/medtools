@@ -251,6 +251,10 @@ export function RulesView({ data, month }: ViewProps) {
           Chi fa la <b>notte</b> non lavora né il giorno stesso né il giorno dopo.
         </li>
         <li>
+          <b>Al massimo una notte a settimana</b> (da lunedì a domenica) per persona, salvo necessità: è una preferenza forte, che cede solo
+          per non lasciare un posto scoperto (avviso nel calendario).
+        </li>
+        <li>
           <b>Smonto dopo il weekend</b>, dove possibile: chi lavora in PS o in OBI sabato e domenica non lavora il lunedì; chi fa Ped Urg 12h
           sabato e domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto.
         </li>
@@ -332,6 +336,10 @@ export function RulesView({ data, month }: ViewProps) {
                 <td>se il posto porta un V anno oltre {MAX_WEEKENDS[5]} weekend nel mese (contando anche i giorni collegati, es. notte di venerdì → domenica)</td>
               </tr>
               <tr>
+                <td>+{WEIGHTS.weekNights}</td>
+                <td>per ogni notte in più nella stessa settimana (lun–dom), anche quella collegata (alti del sabato → notte di domenica)</td>
+              </tr>
+              <tr>
                 <td>+{WEIGHTS.blockMissing}</td>
                 <td>per ogni giorno collegato (blocco Ped Urg, OBI e PS del weekend) in cui la persona non è disponibile</td>
               </tr>
@@ -365,6 +373,10 @@ export function RulesView({ data, month }: ViewProps) {
               <tr>
                 <td>{COST.weekendCap}</td>
                 <td>per ogni weekend oltre il tetto mensile, per persona</td>
+              </tr>
+              <tr>
+                <td>{COST.weekNights}</td>
+                <td>per ogni notte oltre la prima nella stessa settimana, per persona</td>
               </tr>
               <tr>
                 <td>
