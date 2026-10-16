@@ -28,6 +28,7 @@ export function flatten(d: AppData): Flat {
   for (const [k, v] of Object.entries(d.monthParams)) put(`params:${k}`, v);
   for (const [month, cells] of Object.entries(d.assignments)) for (const [k, v] of Object.entries(cells)) put(`cell:${month}:${k}`, v);
   for (const [k, v] of Object.entries(d.ruotaNames ?? {})) put(`ruota:${k}`, v);
+  for (const k of Object.keys(d.lockedMonths ?? {})) put(`lock:${k}`, true);
   return m;
 }
 
@@ -48,6 +49,7 @@ export function unflatten(m: Flat): AppData {
       const month = rest.slice(0, 7);
       (d.assignments[month] ??= {})[rest.slice(8)] = v;
     } else if (kind === 'ruota') d.ruotaNames![rest] = v;
+    else if (kind === 'lock') (d.lockedMonths ??= {})[rest] = true;
   }
   d.people.sort((a, b) => a.name.localeCompare(b.name));
   d.academicYears.sort((a, b) => a.id.localeCompare(b.id));

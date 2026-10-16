@@ -4,7 +4,8 @@
  * GET  /api/data?since=<ms>  → record modificati dopo `since` (anche i cancellati, con v = null) e `now`.
  * POST /api/data  { ops: [{ k, v }] }  → scrive i record (v = null cancella). Ultima scrittura vince, record per record.
  * Senza la password admin non si possono scrivere turni suggeriti (rigenerare il calendario) né assenze
- * di un mese dopo la scadenza: risposta 403 { error: 'admin' }.
+ * di un mese dopo la scadenza, né bloccare/sbloccare un mese (lock:YYYY-MM) o cambiare il calendario di un mese bloccato:
+ * risposta 403 { error: 'admin' }.
  * Ogni scrittura finisce anche nella cronologia (kv_log), da cui si ripristina una versione precedente (vedi history.ts).
  */
 import type { Env } from './_env';
@@ -39,7 +40,7 @@ export async function onRequestPost({ request, env }: Ctx) {
     if (op.v !== null && (typeof op.v !== 'string' || op.v.length > MAX_VALUE)) return json({ error: 'bad-value' }, 400);
   }
   if (!(await validAdmin(request, env))) {
-    const blocked = adminOnly(ops as { k: string; v: string | null }[]);
+    const blocked = await adminOnly(env, ops as { k: string; v: string | null }[]);
     if (blocked) return json({ error: 'admin', message: blocked }, 403);
   }
   const now = Date.now();
@@ -48,15 +49,25 @@ export async function onRequestPost({ request, env }: Ctx) {
 }
 
 /** Motivo per cui le scritture richiedono la password admin, o null se non serve. */
-function adminOnly(ops: { k: string; v: string | null }[]): string | null {
+async function adminOnly(env: Env, ops: { k: string; v: string | null }[]): Promise<string | null> {
   const today = todayRome();
+  const months = new Set<string>();
   for (const { k, v } of ops) {
+    if (k.startsWith('lock:')) return 'Bloccare o sbloccare i turni richiede la password admin.';
+    if (k.startsWith('cell:') || k.startsWith('ruota:')) months.add(k.slice(k.indexOf(':') + 1, k.indexOf(':') + 8));
     if (k.startsWith('absence:') && today > absenceDeadline(k.slice(k.indexOf('|') + 1, k.indexOf('|') + 8))) {
       return 'Scadenza delle indisponibilità passata: serve la password admin.';
     }
     if (k.startsWith('cell:') && v && (JSON.parse(v) as { source?: string }).source === 'suggested') {
       return 'Generare il calendario richiede la password admin.';
     }
+  }
+  if (months.size) {
+    const keys = [...months].map((m) => `lock:${m}`);
+    const { results } = await env.DB.prepare(`SELECT k FROM kv WHERE v IS NOT NULL AND k IN (${keys.map((_, i) => `?${i + 1}`).join(',')})`)
+      .bind(...keys)
+      .all<{ k: string }>();
+    if (results.length) return 'I turni del mese sono bloccati: solo un admin può sbloccarli.';
   }
   return null;
 }

@@ -56,6 +56,26 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
   const roster = useMemo(() => makeRoster(input), [input]);
   const demand = useMemo(() => demandForMonth(input, roster), [input, roster]);
   const cells = data.assignments[month] ?? {};
+  /** Turni bloccati: nessuna modifica finché un admin non sblocca il mese. */
+  const locked = !!data.lockedMonths?.[month];
+  const setLocked = async (on: boolean) => {
+    const why = on
+      ? `Bloccare i turni di ${monthLabel(month)} è riservato a chi ha la password admin.`
+      : `I turni di ${monthLabel(month)} sono bloccati: solo chi ha la password admin può sbloccarli.`;
+    if (!(await requireAdmin(why))) return;
+    if (!confirm(on ? `Bloccare i turni di ${monthLabel(month)}?
+
+Nessuno potrà più modificare il calendario finché un admin non lo sblocca.` : `Sbloccare i turni di ${monthLabel(month)}?
+
+Tutti potranno di nuovo modificare il calendario.`))
+      return;
+    setData((d) => {
+      const lockedMonths = { ...(d.lockedMonths ?? {}) };
+      if (on) lockedMonths[month] = true;
+      else delete lockedMonths[month];
+      return { ...d, lockedMonths };
+    });
+  };
   const assignments = useMemo(() => cellsToAssignments(cells), [cells]);
   const warnings = useMemo(() => validate(input, assignments), [input, assignments]);
   /** Giorni in cui la persona scelta con "Io sono" ha un turno: riga evidenziata. */
@@ -180,7 +200,7 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
     <section>
       <div className="toolbar">
         <h2>Turni di {monthLabel(month)}</h2>
-        <button className="primary" onClick={generate} disabled={busy}>
+        <button className="primary" onClick={generate} disabled={busy || locked}>
           {busy ? 'Calcolo…' : 'Genera suggerimenti'}
         </button>
         <button
@@ -188,11 +208,13 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
             (await requireAdmin('Togliere i suggerimenti del calendario è riservato a chi ha la password admin.')) &&
             setCells((c) => Object.fromEntries(Object.entries(c).filter(([, v]) => v.source === 'manual')))
           }
+          disabled={locked}
         >
           Togli suggerimenti
         </button>
         <button
           className="danger"
+          disabled={locked}
           onClick={async () => {
             if (!(await requireAdmin('Svuotare il mese è riservato a chi ha la password admin.'))) return;
             if (!confirm('Svuotare tutto il mese, comprese le modifiche manuali e i nomi della ruota comune?')) return;
@@ -205,6 +227,9 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
         >
           Svuota mese
         </button>
+        <button className={locked ? 'lock-on' : ''} onClick={() => setLocked(!locked)} title={locked ? 'Solo un admin può sbloccare' : 'Nessuno potrà più modificare il calendario del mese'}>
+          {locked ? '🔒 Sblocca turni' : 'Blocca turni'}
+        </button>
         <button onClick={() => exportAs('xlsx')} disabled={!!exporting}>
           {exporting === 'xlsx' ? 'Preparo il file…' : 'Esporta Excel'}
         </button>
@@ -212,6 +237,12 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
           {exporting === 'pdf' ? 'Preparo il file…' : 'Esporta PDF'}
         </button>
       </div>
+
+      {locked && (
+        <p className="banner">
+          🔒 <b>Turni di {monthLabel(month)} bloccati</b>: il calendario non si può più modificare. Per cambiarlo un admin deve premere "Sblocca turni".
+        </p>
+      )}
 
       <div className="stats">
         <span>{suggested} suggeriti</span>
@@ -353,6 +384,7 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
                       <Fragment key={k}>
                         <td id={`cell-${k}`} className={cls} title={title}>
                           <select
+                            disabled={locked}
                             value={cell?.who ?? ''}
                             onChange={(e) => {
                               const value = e.target.value === OTHER ? askName(cell?.who) : e.target.value;
@@ -408,6 +440,7 @@ export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) 
                           {secondNight && cell?.who === RUOTA && (
                             <input
                               className="ruota-name"
+                              disabled={locked}
                               key={`${date}|${ruotaNames[date] ?? ''}`}
                               list="ruota-names"
                               defaultValue={ruotaNames[date] ?? ''}

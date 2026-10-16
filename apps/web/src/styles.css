@@ -1085,3 +1085,14 @@ section > p.banner {
   border: 1px solid #e3c26b;
   white-space: nowrap;
 }
+/* Turni bloccati: celle leggibili come prima, ma non modificabili */
+.cal select:disabled,
+.cal input:disabled {
+  opacity: 1;
+  color: inherit;
+  cursor: default;
+}
+.lock-on {
+  border-color: #e3c26b;
+  color: #9a6700;
+}

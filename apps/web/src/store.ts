@@ -33,6 +33,8 @@ export interface AppData {
   assignments: Record<string, Record<string, Cell>>;
   /** Notte PS: nomi della ruota comune scritti a mano, per data (fuori anagrafica e fuori bilanciamento). */
   ruotaNames?: Record<string, string>;
+  /** Mesi con i turni bloccati (pulsante "Blocca turni", solo admin): il calendario non si modifica più finché un admin non lo sblocca. */
+  lockedMonths?: Record<string, true>;
 }
 
 export const YEAR_LABEL: Record<Year, string> = { 3: 'III', 4: 'IV', 5: 'V' };
