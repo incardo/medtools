@@ -35,6 +35,8 @@ export interface AppData {
   ruotaNames?: Record<string, string>;
   /** Mesi con i turni bloccati (pulsante "Blocca turni", solo admin): il calendario non si modifica più finché un admin non lo sblocca. */
   lockedMonths?: Record<string, true>;
+  /** Chi ha generato i turni e quando: chiave `${month}|${ms}`, mostrato nella scheda Parametri. */
+  generations?: Record<string, { name: string; at: number }>;
 }
 
 export const YEAR_LABEL: Record<Year, string> = { 3: 'III', 4: 'IV', 5: 'V' };

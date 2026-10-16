@@ -54,6 +54,7 @@ async function adminOnly(env: Env, ops: { k: string; v: string | null }[]): Prom
   const months = new Set<string>();
   for (const { k, v } of ops) {
     if (k.startsWith('lock:')) return 'Bloccare o sbloccare i turni richiede la password admin.';
+    if (k.startsWith('gen:')) return 'Generare il calendario richiede la password admin.';
     if (k.startsWith('cell:') || k.startsWith('ruota:')) months.add(k.slice(k.indexOf(':') + 1, k.indexOf(':') + 8));
     if (k.startsWith('absence:') && today > absenceDeadline(k.slice(k.indexOf('|') + 1, k.indexOf('|') + 8))) {
       return 'Scadenza delle indisponibilità passata: serve la password admin.';

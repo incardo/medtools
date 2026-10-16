@@ -9,6 +9,13 @@ export function ParamsView({ data, setData, month, onRestored }: ViewProps & { o
   const params = paramsFor(data, month);
   const [exam, setExam] = useState<ExamDay>({ date: `${month}-01`, years: [5], nightOnly: false });
 
+  const generations = Object.entries(data.generations ?? {})
+    .filter(([k]) => k.startsWith(`${month}|`))
+    .map(([, g]) => g)
+    .sort((a, b) => b.at - a.at);
+  const when = (at: number) =>
+    new Date(at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
   const setParams = (patch: Partial<MonthParams>) =>
     setData((d) => ({ ...d, monthParams: { ...d.monthParams, [month]: { ...paramsFor(d, month), ...patch } } }));
 
@@ -85,6 +92,19 @@ export function ParamsView({ data, setData, month, onRestored }: ViewProps & { o
         </button>
       </div>
       <p className="hint">Esempio: esame del V anno il 5 → "tutto il giorno" il 5 e "solo la notte" il 4.</p>
+
+      <h4>Turni generati</h4>
+      {generations.length === 0 ? (
+        <p className="muted">Nessuno ha ancora generato i turni di {monthLabel(month)}.</p>
+      ) : (
+        <ul className="exams">
+          {generations.map((g) => (
+            <li key={g.at}>
+              {when(g.at)} · <b>{g.name}</b>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <HistoryPanel onRestored={onRestored} />
     </section>

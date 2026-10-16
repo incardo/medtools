@@ -42,6 +42,21 @@ function jumpTo(id: string) {
   el.classList.add('flash');
   el.querySelector('select')?.focus({ preventScroll: true });
 }
+const ADMIN_NAME_KEY = 'medtools:adminName';
+function loadAdminName(): string {
+  try {
+    return localStorage.getItem(ADMIN_NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function saveAdminName(name: string) {
+  try {
+    localStorage.setItem(ADMIN_NAME_KEY, name);
+  } catch {
+    // senza localStorage il nome si richiede da capo la prossima volta
+  }
+}
 const norm = (s: string) =>
   s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -169,6 +184,10 @@ Tutti potranno di nuovo modificare il calendario.`))
       ? `Rigenerare i suggerimenti di ${monthLabel(month)}?\n\nI ${suggested} turni suggeriti ora verranno sostituiti; le modifiche manuali restano.`
       : `Generare i suggerimenti per ${monthLabel(month)}?\n\nLe modifiche manuali restano.`;
     if (!confirm(msg)) return;
+    // Nome di chi genera, mostrato nella scheda Parametri.
+    const name = prompt('Il tuo nome (comparirà nella scheda Parametri come autore dei turni generati):', loadAdminName() || names.get(me) || '')?.trim();
+    if (!name) return;
+    saveAdminName(name);
     setBusy(true);
     // lascia ridisegnare il pulsante prima del calcolo
     setTimeout(() => {
@@ -179,6 +198,8 @@ Tutti potranno di nuovo modificare il calendario.`))
         for (const a of res.assignments) next[keyOf(a)] = { who: a.who, source: 'suggested' };
         return next;
       });
+      const at = Date.now();
+      setData((d) => ({ ...d, generations: { ...d.generations, [`${month}|${at}`]: { name, at } } }));
       setBusy(false);
     }, 20);
   };
