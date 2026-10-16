@@ -298,7 +298,8 @@ export function RulesView({ data, month }: ViewProps) {
       <p className="hint">
         Si comunicano <b>entro il {ABSENCE_LIMITS.deadlineDay} del mese precedente</b>. Al massimo <b>{ABSENCE_LIMITS.weekendX} giorni di X nel
         weekend</b> (2 sabati e 2 domeniche, cioè 2 weekend) e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (ferie e indisponibilità parziali non
-        contano): oltre il limite la scheda Disponibilità dà un avviso.
+        contano): oltre il limite la scheda Disponibilità dà un avviso. Dopo la scadenza le indisponibilità del mese si cambiano solo con la
+        <b> password admin</b>, che serve anche per generare o togliere i suggerimenti del calendario.
       </p>
       <p className="hint">
         Gli <b>esami</b> (scheda Parametri) rendono indisponibile un intero anno di corso per tutto il giorno o solo per la notte.

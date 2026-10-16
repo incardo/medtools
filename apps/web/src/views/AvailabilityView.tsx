@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent } fro
 import {
   ABSENCE_INFO,
   ABSENCE_LIMITS,
+  absenceDeadline,
   addDays,
   buildDemand,
   daysOfMonth,
@@ -37,7 +38,7 @@ function needed(year: Year, today: Position[], yesterday: Position[]): number {
   return today.filter(own).length + night;
 }
 
-export function AvailabilityView({ data, setData, month }: ViewProps) {
+export function AvailabilityView({ data, setData, month, admin, requireAdmin }: ViewProps) {
   const days = daysOfMonth(month);
   const input = useMemo(() => engineInput(data, month), [data, month]);
   const roster = useMemo(() => makeRoster(input), [input]);
@@ -149,9 +150,10 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
 
   const today = todayISO();
 
-  // Scadenza: entro il 15 del mese precedente. Limiti sulle X: avviso, non blocco.
-  const [y, m] = month.split('-').map(Number);
-  const deadline = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}-${String(ABSENCE_LIMITS.deadlineDay).padStart(2, '0')}`;
+  // Scadenza: entro il 15 del mese precedente; dopo si modifica solo con la password admin. Limiti sulle X: avviso, non blocco.
+  const deadline = absenceDeadline(month);
+  const locked = today > deadline && !admin;
+  const unlock = () => requireAdmin(`La scadenza per le indisponibilità di ${monthLabel(month)} era il ${shortDate(deadline)}: ora le modifica solo chi ha la password admin.`);
   const overLimit = useMemo(() => {
     const out = new Map<string, string>();
     for (const r of rows) {
@@ -210,7 +212,7 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
       </p>
       <p className={`banner${today > deadline ? ' bad' : ''}`}>
         Le indisponibilità di {monthLabel(month)} vanno comunicate <b>entro il {shortDate(deadline)}</b>
-        {today > deadline ? ' (termine scaduto: eventuali modifiche vanno concordate)' : ''}. Al massimo{' '}
+        {today > deadline ? ` (termine scaduto: ${admin ? 'modifichi come admin' : 'le modifiche richiedono la password admin'})` : ''}. Al massimo{' '}
         <b>{ABSENCE_LIMITS.weekendX} giorni di X nel weekend</b> (2 sabati e 2 domeniche, cioè 2 weekend) e <b>{ABSENCE_LIMITS.weekdayX} X nei giorni feriali</b> per persona nel mese (le X
         sono le indisponibilità di giorno intero; ferie e indisponibilità parziali non contano).
       </p>
@@ -283,10 +285,15 @@ export function AvailabilityView({ data, setData, month }: ViewProps) {
                         onPointerDown={(e) => {
                           if (inactive || brush === null) return;
                           e.preventDefault();
+                          if (locked) return void unlock();
                           painting.current = { personId: r.id, done: new Set() };
                           paint(r.id, d);
                         }}
-                        onClick={(e) => !inactive && brush === null && openMenu(r.id, d, e.currentTarget)}
+                        onClick={async (e) => {
+                          if (inactive || brush !== null) return;
+                          const el = e.currentTarget;
+                          if (!locked || (await unlock())) openMenu(r.id, d, el);
+                        }}
                       >
                         {kind ? ABSENCE_INFO[kind].short : ''}
                       </td>

@@ -45,7 +45,7 @@ function jumpTo(id: string) {
 const norm = (s: string) =>
   s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-export function CalendarView({ data, setData, month }: ViewProps) {
+export function CalendarView({ data, setData, month, requireAdmin }: ViewProps) {
   const [busy, setBusy] = useState(false);
   const [me, setMeState] = useState(loadMe);
   const setMe = (id: string) => {
@@ -142,7 +142,8 @@ export function CalendarView({ data, setData, month }: ViewProps) {
     return EXTERNAL + typed;
   };
 
-  const generate = () => {
+  const generate = async () => {
+    if (!(await requireAdmin('Generare i suggerimenti del calendario è riservato a chi ha la password admin.'))) return;
     const suggested = Object.values(cells).filter((v) => v.source === 'suggested').length;
     const msg = suggested
       ? `Rigenerare i suggerimenti di ${monthLabel(month)}?\n\nI ${suggested} turni suggeriti ora verranno sostituiti; le modifiche manuali restano.`
@@ -182,12 +183,18 @@ export function CalendarView({ data, setData, month }: ViewProps) {
         <button className="primary" onClick={generate} disabled={busy}>
           {busy ? 'Calcolo…' : 'Genera suggerimenti'}
         </button>
-        <button onClick={() => setCells((c) => Object.fromEntries(Object.entries(c).filter(([, v]) => v.source === 'manual')))}>
+        <button
+          onClick={async () =>
+            (await requireAdmin('Togliere i suggerimenti del calendario è riservato a chi ha la password admin.')) &&
+            setCells((c) => Object.fromEntries(Object.entries(c).filter(([, v]) => v.source === 'manual')))
+          }
+        >
           Togli suggerimenti
         </button>
         <button
           className="danger"
-          onClick={() => {
+          onClick={async () => {
+            if (!(await requireAdmin('Svuotare il mese è riservato a chi ha la password admin.'))) return;
             if (!confirm('Svuotare tutto il mese, comprese le modifiche manuali e i nomi della ruota comune?')) return;
             setCells(() => ({}));
             setData((d) => ({

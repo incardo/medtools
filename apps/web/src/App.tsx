@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { monthsOfAcademicYear } from '@medtools/engine';
 import { browserData, initialComposition } from './store';
 import { useSharedData, type SyncStatus } from './sync';
+import { useAdmin } from './admin';
 import { CalendarView } from './views/CalendarView';
 import { AvailabilityView } from './views/AvailabilityView';
 import { PeopleView } from './views/PeopleView';
@@ -27,8 +28,10 @@ export function App() {
   const [tab, setTab] = useState<Tab>('calendario');
   const [month, setMonth] = useState('2026-11');
   const months = data.academicYears.flatMap((a) => monthsOfAcademicYear(a.id));
+  const connected = status.state !== 'login' && status.state !== 'blocked' && status.state !== 'loading';
+  const { admin, requireAdmin, lock, prompt } = useAdmin(connected);
 
-  const props = { data, setData, month };
+  const props = { data, setData, month, admin, requireAdmin };
 
   return (
     <div className="app">
@@ -51,6 +54,14 @@ export function App() {
           ))}
         </nav>
         <SyncBadge status={status} />
+        {admin && (
+          <span className="admin-badge" title="Puoi generare il calendario e cambiare le disponibilità dopo la scadenza">
+            Admin ·{' '}
+            <button className="link" onClick={lock}>
+              esci da admin
+            </button>
+          </span>
+        )}
         {status.state !== 'login' && status.state !== 'blocked' && (
           <button className="link logout" onClick={logout} title="Esci da questo browser">
             Esci
@@ -85,6 +96,7 @@ export function App() {
           {tab === 'parametri' && <ParamsView {...props} onRestored={refresh} />}
         </main>
       )}
+      {prompt}
     </div>
   );
 }

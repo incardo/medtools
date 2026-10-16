@@ -15,6 +15,8 @@ export interface Env {
   DB: D1Database;
   /** Password condivisa di accesso: secret del progetto Pages (`wrangler pages secret put APP_PASSWORD`). */
   APP_PASSWORD?: string;
+  /** Password admin, solo per alcuni (`wrangler pages secret put ADMIN_PASSWORD`): vedi _auth.ts. */
+  ADMIN_PASSWORD?: string;
   DEV_NO_AUTH?: string;
 }
 

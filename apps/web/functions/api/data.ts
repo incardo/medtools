@@ -3,9 +3,12 @@
  *
  * GET  /api/data?since=<ms>  → record modificati dopo `since` (anche i cancellati, con v = null) e `now`.
  * POST /api/data  { ops: [{ k, v }] }  → scrive i record (v = null cancella). Ultima scrittura vince, record per record.
+ * Senza la password admin non si possono scrivere turni suggeriti (rigenerare il calendario) né assenze
+ * di un mese dopo la scadenza: risposta 403 { error: 'admin' }.
  * Ogni scrittura finisce anche nella cronologia (kv_log), da cui si ripristina una versione precedente (vedi history.ts).
  */
 import type { Env } from './_env';
+import { absenceDeadline, todayRome, validAdmin } from './_auth';
 
 type Ctx = Parameters<PagesFunction<Env>>[0];
 
@@ -35,9 +38,27 @@ export async function onRequestPost({ request, env }: Ctx) {
     if (typeof op.k !== 'string' || op.k.length > 300) return json({ error: 'bad-key' }, 400);
     if (op.v !== null && (typeof op.v !== 'string' || op.v.length > MAX_VALUE)) return json({ error: 'bad-value' }, 400);
   }
+  if (!(await validAdmin(request, env))) {
+    const blocked = adminOnly(ops as { k: string; v: string | null }[]);
+    if (blocked) return json({ error: 'admin', message: blocked }, 403);
+  }
   const now = Date.now();
   await writeOps(env, ops as { k: string; v: string | null }[], now);
   return json({ now });
+}
+
+/** Motivo per cui le scritture richiedono la password admin, o null se non serve. */
+function adminOnly(ops: { k: string; v: string | null }[]): string | null {
+  const today = todayRome();
+  for (const { k, v } of ops) {
+    if (k.startsWith('absence:') && today > absenceDeadline(k.slice(k.indexOf('|') + 1, k.indexOf('|') + 8))) {
+      return 'Scadenza delle indisponibilità passata: serve la password admin.';
+    }
+    if (k.startsWith('cell:') && v && (JSON.parse(v) as { source?: string }).source === 'suggested') {
+      return 'Generare il calendario richiede la password admin.';
+    }
+  }
+  return null;
 }
 
 /** Scrive i record in kv e nella cronologia, a blocchi (D1 limita le istruzioni per batch). */

@@ -58,6 +58,12 @@ export const ABSENCE_INFO: Record<AbsenceKind, { short: string; label: string }>
  */
 export const ABSENCE_LIMITS = { weekendX: 4, weekdayX: 8, deadlineDay: 15 } as const;
 
+/** Ultimo giorno (YYYY-MM-DD) per comunicare le indisponibilità di un mese (YYYY-MM); dopo serve la password admin. */
+export function absenceDeadline(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}-${String(ABSENCE_LIMITS.deadlineDay).padStart(2, '0')}`;
+}
+
 /** Etichetta generica: persone a caso, non in anagrafica. */
 export const RUOTA = 'RUOTA_COMUNE';
 

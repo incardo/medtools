@@ -72,7 +72,7 @@ async function api<T>(init?: RequestInit, since?: number): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error((body as { message?: string }).message ?? `Errore ${res.status}`);
-    (err as Error & { kind?: string }).kind = res.status === 401 ? 'login' : res.status === 503 ? 'blocked' : undefined;
+    (err as Error & { kind?: string }).kind = res.status === 401 ? 'login' : res.status === 503 ? 'blocked' : res.status === 403 ? 'admin' : undefined;
     throw err;
   }
   return body as T;
@@ -134,6 +134,15 @@ export function useSharedData() {
       inFlight.current.clear();
       setStatus({ state: 'ok', at: Date.now() });
     } catch (e) {
+      if ((e as Error & { kind?: string }).kind === 'admin') {
+        // Scritture riservate all'admin (es. scadenza passata nel frattempo): si scartano e si ricarica tutto dal server.
+        inFlight.current.clear();
+        flat.current = new Map();
+        since.current = 0;
+        alert(`Modifica non salvata: ${(e as Error).message}`);
+        await pull();
+        return;
+      }
       // Da rimandare: rimettiamo le operazioni in coda senza scavalcare modifiche più recenti.
       inFlight.current.clear();
       for (const o of ops) if (!pending.current.has(o.k)) pending.current.set(o.k, o.v);

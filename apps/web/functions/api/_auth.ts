@@ -40,5 +40,35 @@ export async function validSession(request: Request, env: Env): Promise<boolean>
   return (await hmac(env.APP_PASSWORD, `session:${exp}`)) === sig;
 }
 
+/**
+ * Password admin (secret ADMIN_PASSWORD), data solo ad alcuni: serve per rigenerare il calendario
+ * e per cambiare le disponibilità di un mese dopo la scadenza (il 15 del mese precedente).
+ * Cookie separato da quello di accesso, firmato con la password admin: cambiandola si perde l'admin ovunque.
+ */
+export const ADMIN_COOKIE = 'mt_admin';
+
+export async function makeAdmin(env: Env): Promise<string> {
+  const exp = Date.now() + SESSION_DAYS * 86_400_000;
+  return `${exp}.${await hmac(env.ADMIN_PASSWORD!, `admin:${exp}`)}`;
+}
+
+export async function validAdmin(request: Request, env: Env): Promise<boolean> {
+  if (env.DEV_NO_AUTH === '1') return true;
+  const raw = request.headers.get('cookie')?.match(new RegExp(`${ADMIN_COOKIE}=([^;]+)`))?.[1];
+  if (!raw || !env.ADMIN_PASSWORD) return false;
+  const [exp, sig] = raw.split('.');
+  if (!exp || !sig || Number(exp) < Date.now()) return false;
+  return (await hmac(env.ADMIN_PASSWORD, `admin:${exp}`)) === sig;
+}
+
+/** Ultimo giorno per le indisponibilità di un mese (YYYY-MM): il 15 del mese precedente. Uguale a `absenceDeadline` del motore. */
+export function absenceDeadline(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}-15`;
+}
+
+/** Oggi in Italia, YYYY-MM-DD. */
+export const todayRome = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date());
+
 export const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });

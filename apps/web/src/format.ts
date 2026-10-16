@@ -6,6 +6,10 @@ export interface ViewProps {
   data: AppData;
   setData: Dispatch<SetStateAction<AppData>>;
   month: string;
+  /** Password admin attiva su questo browser. */
+  admin: boolean;
+  /** Chiede la password admin se serve (`reason` spiega perché); true se l'azione può procedere. */
+  requireAdmin: (reason: string) => Promise<boolean>;
 }
 
 const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];

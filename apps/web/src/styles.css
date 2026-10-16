@@ -1055,3 +1055,33 @@ section > p.banner {
   color: var(--err);
   font-weight: 600;
 }
+
+/* Password admin */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgb(0 0 0 / 0.35);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+}
+.login.modal {
+  margin-top: 10vh;
+  width: 100%;
+  box-shadow: var(--shadow-pop);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.admin-badge {
+  font-size: var(--fs-sm);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  color: #9a6700;
+  border: 1px solid #e3c26b;
+  white-space: nowrap;
+}
