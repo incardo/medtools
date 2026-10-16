@@ -329,6 +329,10 @@ export function RulesView({ data, month }: ViewProps) {
                 <td>per ogni turno fatto in totale</td>
               </tr>
               <tr>
+                <td>+{WEIGHTS.night}</td>
+                <td>in più per ogni notte già fatta (solo per i posti di notte): le notti si bilanciano più degli altri turni</td>
+              </tr>
+              <tr>
                 <td>+{WEIGHTS.weekend}</td>
                 <td>per ogni giorno di weekend già lavorato (solo per i posti di sabato e domenica)</td>
               </tr>
@@ -400,6 +404,10 @@ export function RulesView({ data, month }: ViewProps) {
                   ×{COST.spreadTotal} / ×{COST.spreadWeekend} / ×{COST.spreadFamily}
                 </td>
                 <td>squilibrio dentro ogni anno di corso (varianza) su turni totali, giorni di weekend e ogni tipo di turno</td>
+              </tr>
+              <tr>
+                <td>×{COST.spreadNight}</td>
+                <td>squilibrio in più sulle notti, dentro ogni anno di corso</td>
               </tr>
             </tbody>
           </table>

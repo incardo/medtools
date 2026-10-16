@@ -123,6 +123,8 @@ export const WEIGHTS = {
   family: 3,
   /** per ogni turno fatto in totale */
   total: 1,
+  /** in più per ogni notte già fatta (solo per i posti di notte): le notti pesano più degli altri turni */
+  night: 6,
   /** per ogni giorno di weekend già lavorato (solo per i posti di sabato e domenica) */
   weekend: 4,
   /** se il posto viola lo smonto dopo il weekend */
@@ -161,6 +163,8 @@ export const COST = {
   spreadWeekend: 2,
   /** squilibrio: ogni tipo di turno */
   spreadFamily: 1,
+  /** squilibrio in più per le notti */
+  spreadNight: 10,
 } as const;
 
 function variance(xs: number[]): number {
@@ -242,6 +246,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const score = (p: string, pos: Position): number => {
     let s = countOf(p)[SLOT_INFO[pos.slot].family] * WEIGHTS.family + totalOf(p) * WEIGHTS.total;
     if (isWeekend(pos.date)) s += weekendOf(p) * WEIGHTS.weekend;
+    if (pos.slot === 'PS_NOTTE') s += countOf(p).PS_NOTTE * WEIGHTS.night;
     if (board.weekendRestDue(p, pos.date)) s += WEIGHTS.weekendRest;
     // Blocco Ped Urg: meglio chi è disponibile anche nei giorni successivi del blocco.
     s += blockMissing(p, pos) * WEIGHTS.blockMissing;
@@ -367,6 +372,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     spread += variance(ids.map(totalOf)) * COST.spreadTotal;
     spread += variance(ids.map(weekendOf)) * COST.spreadWeekend;
     for (const f of BALANCED) spread += variance(ids.map((p) => countOf(p)[f])) * COST.spreadFamily;
+    spread += variance(ids.map((p) => countOf(p).PS_NOTTE)) * COST.spreadNight;
   }
   return { assignments: out, holes, cost:
       holes.length * COST.hole +

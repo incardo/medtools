@@ -189,9 +189,10 @@ Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]*
    - chi fa **OBI sia sabato sia domenica** non lavora il **lunedì** **[detto]** (06/10/2026);
    - chi fa **Ped Urg 12 ore (mattina + pomeriggio) sia sabato sia domenica** non lavora il **martedì**.
 5. Riequilibrare **tipologia di turni e carico** usando lo storico multi-mese, che si azzera a novembre.
-6. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
-7. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026) Lo stesso per i **weekend di OBI** del V anno (06/10/2026).
-8. **Un weekend a tutti**: i posti del weekend vanno prima a chi, nel mese, è disponibile e non ha ancora lavorato un weekend, anche al posto della persona collegata al giorno prima (scambio del III anno, notte di venerdì → domenica). **[detto]** (14/10/2026) Preferenza (`WEIGHTS.weekendShare`, `WEIGHTS.linkBreak`, `COST.noWeekend`), senza avviso.
+6. Le **notti** si bilanciano più degli altri turni, dentro ogni anno di corso e con lo storico dell'anno (`WEIGHTS.night`, `COST.spreadNight`). **[detto]** (16/10/2026)
+7. Bilanciare anche i **giorni di weekend lavorati** (sabato/domenica), dentro ogni anno di corso. **[detto]** (29/09/2026)
+8. **Blocchi Ped Urg equi**: il blocco va prima a chi ne ha fatti meno nell'anno, e chi ha il blocco riceve meno Ped Urg nei feriali. **[detto]** (29/09/2026) Lo stesso per i **weekend di OBI** del V anno (06/10/2026).
+9. **Un weekend a tutti**: i posti del weekend vanno prima a chi, nel mese, è disponibile e non ha ancora lavorato un weekend, anche al posto della persona collegata al giorno prima (scambio del III anno, notte di venerdì → domenica). **[detto]** (14/10/2026) Preferenza (`WEIGHTS.weekendShare`, `WEIGHTS.linkBreak`, `COST.noWeekend`), senza avviso.
 
 Chi lavora un solo giorno del weekend non ha smonto. **[assunzione]**
 
