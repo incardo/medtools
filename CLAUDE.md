@@ -181,7 +181,7 @@ III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
 
 Valgono per tutte le persone assegnate dal motore, di qualsiasi anno. **[detto]**
 
-1. Una persona con un turno assegnato **non riceve altri turni lo stesso giorno**.
+1. Una persona con un turno assegnato **non riceve altri turni lo stesso giorno**. Se succede a mano (es. poche persone), il calendario mostra un **avviso** arancione, non un errore. **[detto]** (07/11/2026)
 2. Chi fa la **notte** non lavora né il giorno stesso né il giorno dopo.
 3. **Al massimo una notte in PS a settimana** (lunedì–domenica) per persona, **salvo necessità estrema**. **[detto]** (14/10/2026) Preferenza forte (`WEIGHTS.weekNights`, `COST.weekNights`): cede solo per non lasciare un posto scoperto; avviso nel calendario se superato. Vale anche per il posto collegato (alti del sabato → notte di domenica).
 4. **Smonto dopo il weekend**, **dove possibile** (preferenza, non vincolo assoluto): **[detto]**

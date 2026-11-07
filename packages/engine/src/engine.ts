@@ -451,7 +451,7 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     const same = board.slots(a.who, a.date);
     const mine = [...(byPersonDay.get(`${a.who}|${a.date}`) ?? [])].sort().join();
     const twelveH = twelveHours.get(a.date)?.includes(mine) ?? false;
-    if (same.length > 1 && !twelveH) w('error', 'Più turni nello stesso giorno');
+    if (same.length > 1 && !twelveH) w('warn', 'Più turni nello stesso giorno');
     if (board.slots(a.who, addDays(a.date, -1)).includes('PS_NOTTE')) w('error', 'Smonto notte non rispettato');
     if (board.weekendRestDue(a.who, a.date)) w('warn', 'Smonto dopo il weekend non rispettato');
     if (a.slot === 'PS_NOTTE') {

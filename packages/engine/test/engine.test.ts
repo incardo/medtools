@@ -527,12 +527,12 @@ describe('motore', () => {
     const r = suggestMonth(exampleInput({ locked: [extra] }));
     expect(r.assignments.some((a) => a.who === 'kilo' && (a.date === '2026-11-02' || a.date === '2026-11-03'))).toBe(false);
     expect(countAssignments([extra]).kilo.PS_NOTTE).toBe(1);
-    // Stessa persona nei due posti della stessa notte: errore.
+    // Stessa persona nei due posti della stessa notte: avviso (con poche persone può capitare).
     const ws = validate(input, [
       { date: '2026-11-03', slot: 'PS_NOTTE', idx: 0, who: 'alfa', source: 'manual' },
       { date: '2026-11-03', slot: 'PS_NOTTE', idx: 1, who: 'alfa', source: 'manual' },
     ]);
-    expect(ws.some((w) => w.message === 'Più turni nello stesso giorno')).toBe(true);
+    expect(ws.find((w) => w.message === 'Più turni nello stesso giorno')?.level).toBe('warn');
   });
 
   it('segnala assenze e doppi turni nelle modifiche manuali', () => {
@@ -545,7 +545,8 @@ describe('motore', () => {
     ]);
     const msgs = ws.filter((w) => w.level === 'error').map((w) => w.message);
     expect(msgs).toContain('Non disponibile (indisponibile)');
-    expect(msgs).toContain('Più turni nello stesso giorno');
+    expect(msgs).not.toContain('Più turni nello stesso giorno');
+    expect(ws.find((w) => w.personId === 'bravo' && w.message === 'Più turni nello stesso giorno')?.level).toBe('warn');
     // III anno in OBI scelto a mano (sostituzione): avviso, non errore.
     const iii = ws.find((w) => w.personId === 'sierra' && w.message.includes('III anno di norma non copre'));
     expect(iii?.level).toBe('warn');
