@@ -222,6 +222,11 @@ export function MyShifts({ data, month, roster, assignments, me, setMe }: Props)
               <span>
                 Weekend <b>{summaryValue(summary, 'weekends')}</b>
               </span>
+              {summaryValue(summary, 'festivi') > 0 && (
+                <span>
+                  Festivi lun–ven <b>{summaryValue(summary, 'festivi')}</b>
+                </span>
+              )}
             </div>
           </div>
           <div className="mine-line">

@@ -1,9 +1,9 @@
 import type { Borders, Cell as XCell, Fill, Worksheet } from 'exceljs';
-import { COLUMNS, EXTERNAL, RUOTA, daysOfMonth, isWeekend, keyOf, type Position, type Roster, type SlotCode, type Year } from '@medtools/engine';
+import { COLUMNS, EXTERNAL, RUOTA, daysOfMonth, festivoName, isWeekend, keyOf, type Position, type Roster, type SlotCode, type Year } from '@medtools/engine';
 import { YEAR_LABEL, type AppData, type Cell } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
 import { groupEnds, headerRows, type HeadCell } from './calendarHeaders';
-import { SUMMARY_COLS, SUMMARY_HEADERS, summarize, summaryValue } from './summary';
+import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_NOTE, summarize, summaryValue } from './summary';
 
 /** Stessi colori dell'app (styles.css), in ARGB. */
 const COLOR = {
@@ -12,6 +12,7 @@ const COLOR = {
   3: 'FFFDE2EA',
   ruota: 'FFDBEAFE',
   weekend: 'FFEEF0F4',
+  festivo: 'FFFDECEC',
   unused: 'FFF3F4F6',
   head: 'FF1F3B63',
   subhead: 'FFDCE3EE',
@@ -121,12 +122,15 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
     const date = day[0].date;
     const r = ws.getRow(first + i);
     r.height = 18;
-    const weekend = isWeekend(date);
+    const festivo = festivoName(date);
+    // Festivo: stesso schema del weekend; la cella del giorno in rosa chiaro, con il nome del festivo come nota.
+    const weekend = isWeekend(date) || !!festivo;
     const { dow, day: dd } = dayLabel(date);
     const d = r.getCell(1);
     d.value = `${dow} ${dd}`;
     d.font = { bold: true, color: { argb: weekend ? 'FFB42318' : COLOR.head } };
-    d.fill = fill(weekend ? COLOR.weekend : 'FFFFFFFF');
+    d.fill = fill(festivo ? COLOR.festivo : weekend ? COLOR.weekend : 'FFFFFFFF');
+    if (festivo) d.note = festivo;
     d.alignment = { vertical: 'middle' };
     d.border = box;
 
@@ -184,7 +188,7 @@ export async function exportExcel({ data, month, demand, cells, roster, headers 
   title(
     rs,
     `Riepilogo turni · ${Label}`,
-    'Turni del mese per tipo; mattina e pomeriggio insieme. Un turno da 12h conta come due. Sab/dom: Giorni = giorni di sabato o domenica lavorati (non weekend); Weekend = weekend distinti con almeno un turno. Il totale esclude Bambi e i reparti facoltativi; la ruota comune non è conteggiata.',
+    SUMMARY_NOTE,
     sumWidth,
   );
   for (const [c, text] of [

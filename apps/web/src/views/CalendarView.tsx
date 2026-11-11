@@ -9,6 +9,7 @@ import {
   daysOfMonth,
   demandForMonth,
   isPerson,
+  festivoName,
   isWeekend,
   keyOf,
   makeRoster,
@@ -348,9 +349,15 @@ Tutti potranno di nuovo modificare il calendario.`))
               return (
                 <tr
                   key={date}
-                  className={(isWeekend(date) ? 'weekend' : '') + (myDays.has(date) ? ' mine-row' : '') + (date === today ? ' today' : '')}
+                  className={
+                    (isWeekend(date) ? 'weekend' : '') + (festivoName(date) ? ' festivo' : '') + (myDays.has(date) ? ' mine-row' : '') + (date === today ? ' today' : '')
+                  }
                 >
-                  <th id={`day-${date}`} className="sticky day" title={date === today ? 'Oggi' : undefined}>
+                  <th
+                    id={`day-${date}`}
+                    className="sticky day"
+                    title={[date === today && 'Oggi', festivoName(date) && `Festivo: ${festivoName(date)}`].filter(Boolean).join(' · ') || undefined}
+                  >
                     <span className="dow">{dow}</span> {dd}
                     {date === today && <span className="today-dot" aria-label="oggi" />}
                   </th>

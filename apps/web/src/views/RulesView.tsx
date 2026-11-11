@@ -6,6 +6,8 @@ import {
   MAX_WEEKENDS,
   NIGHT_CYCLE,
   daysOfMonth,
+  festiviBetween,
+  isWeekend,
   nightPlan,
   weekday,
   OPTIONAL_WARDS,
@@ -226,6 +228,51 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
       </ul>
 
+      <h3>Festivi</h3>
+      <p className="hint">
+        Festivi nazionali italiani (con Pasqua e Pasquetta calcolate ogni anno e San Francesco il 4 ottobre, festa nazionale dal 2026), più il{' '}
+        <b>31 dicembre</b>. Il santo patrono non c'è; il 24 dicembre resta un giorno feriale (di notte è un super festivo).
+      </p>
+      <ul className="rules-list">
+        <li>
+          Un festivo <b>dal lunedì al venerdì</b> segue lo <b>schema del sabato</b>: PS alti V anno 12h + III anno 12h, verdi III anno 12h,
+          OBI V anno 12h, Ped Urg un IV anno 12h. Niente autonomo, ambulatorio, Ped Urg del III anno né reparti facoltativi. La{' '}
+          <b>notte</b> resta quella del giorno della settimana (super festivi: V + IV).
+        </li>
+        <li>
+          <b>Smonto il giorno dopo</b> per chi fa 12h nel festivo (preferenza, come lo smonto dopo il weekend; avviso nel calendario).
+        </li>
+        <li>
+          Il festivo <b>non continua il weekend</b>: se è attaccato a un weekend (venerdì o lunedì), di giorno lo coprono <b>persone diverse</b>{' '}
+          da quelle del weekend (preferenza forte, avviso nel calendario). Il blocco Ped Urg parte dal sabato se il venerdì è festivo e finisce
+          la domenica se il lunedì è festivo.
+        </li>
+        <li>
+          I giorni festivi lavorati si <b>bilanciano a parte</b> (non si sommano ai giorni di weekend e non contano nel tetto di weekend), con lo
+          storico dell'anno. In Panoramica c'è la colonna <b>Festivi (lun–ven)</b>; i festivi di sabato o domenica sono già weekend.
+        </li>
+      </ul>
+      <table className="rules-small">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Festivo</th>
+            <th>Come si lavora</th>
+          </tr>
+        </thead>
+        <tbody>
+          {festiviBetween(ay.start, ay.end).map(({ date, name }) => (
+            <tr key={date}>
+              <td>
+                {dayLabel(date).dow} {shortDate(date)}
+              </td>
+              <td>{name}</td>
+              <td>{isWeekend(date) ? 'già weekend' : 'schema del sabato, 12h'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
       <h3>Chi non può coprire cosa</h3>
       <ul className="rules-list">
         {([5, 4, 3] as Year[]).map((y) => {
@@ -256,7 +303,8 @@ export function RulesView({ data, month }: ViewProps) {
         </li>
         <li>
           <b>Smonto dopo il weekend</b>, dove possibile: chi lavora in PS o in OBI sabato e domenica non lavora il lunedì; chi fa Ped Urg 12h
-          sabato e domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto.
+          sabato e domenica non lavora il martedì. Chi lavora un solo giorno del weekend non ha smonto. Chi fa 12h in un <b>festivo</b>
+          infrasettimanale non lavora il giorno dopo.
         </li>
         <li>
           <b>Un weekend a tutti</b>: i posti del weekend vanno prima a chi nel mese non ha ancora lavorato un weekend, se è disponibile, anche
@@ -338,7 +386,15 @@ export function RulesView({ data, month }: ViewProps) {
               </tr>
               <tr>
                 <td>+{WEIGHTS.weekendRest}</td>
-                <td>se il posto farebbe saltare lo smonto dopo il weekend</td>
+                <td>se il posto farebbe saltare lo smonto dopo il weekend o dopo il festivo</td>
+              </tr>
+              <tr>
+                <td>+{WEIGHTS.festivo}</td>
+                <td>per ogni giorno festivo infrasettimanale già lavorato (solo per i posti dei festivi)</td>
+              </tr>
+              <tr>
+                <td>+{WEIGHTS.festivoWeekend}</td>
+                <td>se la persona lavora di giorno sia nel festivo sia nel weekend attaccato (venerdì o lunedì festivo)</td>
               </tr>
               <tr>
                 <td>+{WEIGHTS.weekendCap}</td>
@@ -385,7 +441,11 @@ export function RulesView({ data, month }: ViewProps) {
               </tr>
               <tr>
                 <td>{COST.weekendRest}</td>
-                <td>per ogni smonto dopo il weekend non rispettato</td>
+                <td>per ogni smonto dopo il weekend o dopo il festivo non rispettato</td>
+              </tr>
+              <tr>
+                <td>{COST.festivoWeekend}</td>
+                <td>per ogni turno di giorno nel festivo dato a chi lavora di giorno nel weekend attaccato</td>
               </tr>
               <tr>
                 <td>{COST.weekendCap}</td>
@@ -401,9 +461,9 @@ export function RulesView({ data, month }: ViewProps) {
               </tr>
               <tr>
                 <td>
-                  ×{COST.spreadTotal} / ×{COST.spreadWeekend} / ×{COST.spreadFamily}
+                  ×{COST.spreadTotal} / ×{COST.spreadWeekend} / ×{COST.spreadFestivi} / ×{COST.spreadFamily}
                 </td>
-                <td>squilibrio dentro ogni anno di corso (varianza) su turni totali, giorni di weekend e ogni tipo di turno</td>
+                <td>squilibrio dentro ogni anno di corso (varianza) su turni totali, giorni di weekend, giorni festivi e ogni tipo di turno</td>
               </tr>
               <tr>
                 <td>×{COST.spreadNight}</td>

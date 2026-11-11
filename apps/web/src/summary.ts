@@ -1,4 +1,4 @@
-import { OUTSIDE_BALANCE, countWeekends, daysOfMonth, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
+import { OUTSIDE_BALANCE, countWeekends, daysOfMonth, isFestivoFeriale, isPerson, isWeekend, type Position, type SlotCode, type Year } from '@medtools/engine';
 import { cellsToAssignments, type AppData } from './store';
 import type { HeadNode } from './calendarHeaders';
 
@@ -25,7 +25,7 @@ export const SUMMARY_TURNS: { key: string; slots: SlotCode[] }[] = [
 export const WARD_KEYS = ['ORTO', 'RADIO', 'ANEST', 'CHIR'];
 
 /** Colonne dopo i turni, nell'ordine dell'intestazione. */
-export const SUMMARY_EXTRA = ['total', 'weekend', 'weekends', 'ferie', 'indisp', 'parziali'] as const;
+export const SUMMARY_EXTRA = ['total', 'weekend', 'weekends', 'festivi', 'ferie', 'indisp', 'parziali'] as const;
 export type SummaryExtra = (typeof SUMMARY_EXTRA)[number];
 
 export const SUMMARY_HEADERS: HeadNode[] = [
@@ -37,6 +37,7 @@ export const SUMMARY_HEADERS: HeadNode[] = [
   { label: 'Reparti', children: [{ label: 'Orto' }, { label: 'Radio' }, { label: 'Anest' }, { label: 'Chir' }] },
   { label: 'Totale' },
   { label: 'Sab/dom', children: [{ label: 'Giorni' }, { label: 'Weekend' }] },
+  { label: 'Festivi (lun–ven)' },
   { label: 'Assenze (giorni)', children: [{ label: 'Ferie' }, { label: 'Indisp.' }, { label: 'Parziali' }] },
 ];
 
@@ -48,6 +49,8 @@ export interface PersonSummary {
   weekend: number;
   /** Weekend distinti con almeno un turno: anche una sola giornata conta come weekend. */
   weekends: number;
+  /** Giorni festivi infrasettimanali (lun–ven) con almeno un turno; i festivi di sab/dom sono già in `weekend`. */
+  festivi: number;
   ferie: number;
   indisp: number;
   parziali: number;
@@ -59,8 +62,9 @@ const OUTSIDE_TOTAL: SlotCode[] = OUTSIDE_BALANCE;
 /** Conteggi per persona su uno o più mesi. La ruota comune e i nomi esterni non sono conteggiati. */
 export function summarize(data: AppData, months: string[]): Record<string, PersonSummary> {
   const out: Record<string, PersonSummary> = {};
-  const get = (id: string) => (out[id] ??= { slots: {}, total: 0, weekend: 0, weekends: 0, ferie: 0, indisp: 0, parziali: 0 });
+  const get = (id: string) => (out[id] ??= { slots: {}, total: 0, weekend: 0, weekends: 0, festivi: 0, ferie: 0, indisp: 0, parziali: 0 });
   const weekendDays = new Map<string, Set<string>>();
+  const festivoDays = new Map<string, Set<string>>();
   for (const m of months) {
     for (const a of cellsToAssignments(data.assignments[m])) {
       if (!isPerson(a.who)) continue;
@@ -68,6 +72,7 @@ export function summarize(data: AppData, months: string[]): Record<string, Perso
       s.slots[a.slot] = (s.slots[a.slot] ?? 0) + 1;
       if (!OUTSIDE_TOTAL.includes(a.slot)) s.total++;
       if (isWeekend(a.date)) weekendDays.set(a.who, (weekendDays.get(a.who) ?? new Set()).add(a.date));
+      if (isFestivoFeriale(a.date)) festivoDays.set(a.who, (festivoDays.get(a.who) ?? new Set()).add(a.date));
     }
     for (const p of data.people) {
       for (const d of daysOfMonth(m)) {
@@ -84,8 +89,13 @@ export function summarize(data: AppData, months: string[]): Record<string, Perso
     get(id).weekend = days.size;
     get(id).weekends = countWeekends(days);
   }
+  for (const [id, days] of festivoDays) get(id).festivi = days.size;
   return out;
 }
+
+/** Nota sotto il riepilogo (Excel e PDF). */
+export const SUMMARY_NOTE =
+  'Turni del mese per tipo; mattina e pomeriggio insieme. Un turno da 12h conta come due. Sab/dom: Giorni = giorni di sabato o domenica lavorati (non weekend); Weekend = weekend distinti con almeno un turno. Festivi (lun–ven) = giorni festivi infrasettimanali lavorati; i festivi di sabato o domenica sono già in Sab/dom. Il totale esclude Bambi e i reparti facoltativi; la ruota comune non è conteggiata.';
 
 export type SummaryCol = string;
 export const SUMMARY_COLS: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key), ...SUMMARY_EXTRA];

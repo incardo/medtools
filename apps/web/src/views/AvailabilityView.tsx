@@ -7,6 +7,7 @@ import {
   buildDemand,
   daysOfMonth,
   demandForMonth,
+  festivoName,
   isWeekend,
   makeRoster,
   type AbsenceKind,
@@ -189,7 +190,7 @@ export function AvailabilityView({ data, setData, month, admin, requireAdmin }: 
             .filter(Boolean)
             .join('\n');
           return (
-            <td key={days[i]} className={`num${level}${isWeekend(days[i]) ? ' weekend' : ''}`} title={title}>
+            <td key={days[i]} className={`num${level}${isWeekend(days[i]) ? ' weekend' : ''}${festivoName(days[i]) ? ' festivo' : ''}`} title={title}>
               {c.away.length || ''}
               {c.partial.length ? <sup>+{c.partial.length}</sup> : null}
             </td>
@@ -243,6 +244,7 @@ export function AvailabilityView({ data, setData, month, admin, requireAdmin }: 
         <span className="muted">Righe "assenti": persone assenti tutto il giorno (ferie, indisponibili, esami); +N = assenti solo in parte.</span>
         <span className="chip avail-tight">nessun margine</span>
         <span className="chip avail-short">non bastano per i posti del giorno</span>
+        <span className="chip festivo-chip">festivo</span>
       </div>
       <div className="table-wrap">
         <table className={`avail${brush !== null ? ' brushing' : ''}`} onPointerMove={onPointerMove}>
@@ -252,7 +254,11 @@ export function AvailabilityView({ data, setData, month, admin, requireAdmin }: 
               {days.map((d) => {
                 const { dow, day } = dayLabel(d);
                 return (
-                  <th key={d} className={(isWeekend(d) ? 'weekend' : '') + (d === today ? ' today' : '')} title={d === today ? 'Oggi' : undefined}>
+                  <th
+                    key={d}
+                    className={(isWeekend(d) ? 'weekend' : '') + (festivoName(d) ? ' festivo' : '') + (d === today ? ' today' : '')}
+                    title={[d === today && 'Oggi', festivoName(d) && `Festivo: ${festivoName(d)}`].filter(Boolean).join(' · ') || undefined}
+                  >
                     <span className="dow">{dow}</span>
                     <br />
                     {day}
@@ -278,7 +284,7 @@ export function AvailabilityView({ data, setData, month, admin, requireAdmin }: 
                         key={d}
                         data-person={r.id}
                         data-date={d}
-                        className={`abs ${kind ?? ''} ${isWeekend(d) ? 'weekend' : ''} ${d === today ? 'today' : ''} ${inactive ? 'inactive' : ''} ${
+                        className={`abs ${kind ?? ''} ${isWeekend(d) ? 'weekend' : ''} ${festivoName(d) ? 'festivo' : ''} ${d === today ? 'today' : ''} ${inactive ? 'inactive' : ''} ${
                           open?.personId === r.id && open.date === d ? 'open' : ''
                         }`}
                         title={kind ? ABSENCE_INFO[kind].label : undefined}

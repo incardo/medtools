@@ -1,5 +1,6 @@
 import { addDays, countWeekends, daysOfMonth, isWeekend, weekStart, weekday, weekendKey } from './dates';
 import { Roster } from './roster';
+import { festivoWeekendPartners, isFestivoFeriale } from './holidays';
 import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rules';
 import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
 import { RUOTA, isPerson } from './types';
@@ -62,12 +63,30 @@ class Board {
     return [addDays(monday, -2), addDays(monday, -1)].every((d) => this.slots(personId, d).includes('OBI_M'));
   }
 
-  /** Smonto del weekend (preferenza): lunedì per chi fa PS o OBI sab+dom, martedì per Ped Urg 12h sab+dom. */
-  weekendRestDue(personId: string, date: string): boolean {
+  /** 12h (mattina e pomeriggio) nel festivo infrasettimanale `date`. */
+  festivo12h(personId: string, date: string): boolean {
+    if (!isFestivoFeriale(date)) return false;
+    const fasce = this.slots(personId, date).map((s) => SLOT_INFO[s].fascia);
+    return fasce.includes('M') && fasce.includes('P');
+  }
+
+  /**
+   * Smonto (preferenza): il lunedì per chi fa PS o OBI sab+dom, il martedì per Ped Urg 12h sab+dom
+   * (il lunedì se è festivo: il blocco finisce la domenica), il giorno dopo per chi fa 12h in un festivo infrasettimanale.
+   * Restituisce il motivo, o null.
+   */
+  restDue(personId: string, date: string): string | null {
     const wd = weekday(date);
-    if (wd === 1) return this.psWholeWeekend(personId, date) || this.obiWholeWeekend(personId, date);
-    if (wd === 2) return this.pedu12hWeekend(personId, date);
-    return false;
+    if (this.festivo12h(personId, addDays(date, -1))) return 'Smonto dopo il festivo non rispettato';
+    if (wd === 1 && (this.psWholeWeekend(personId, date) || this.obiWholeWeekend(personId, date))) return 'Smonto dopo il weekend non rispettato';
+    if (wd === 1 && isFestivoFeriale(date) && this.pedu12hWeekend(personId, addDays(date, 1))) return 'Smonto dopo il weekend non rispettato';
+    if (wd === 2 && !isFestivoFeriale(addDays(date, -1)) && this.pedu12hWeekend(personId, date)) return 'Smonto dopo il weekend non rispettato';
+    return null;
+  }
+
+  /** Lavora di giorno sia nel festivo infrasettimanale sia nel weekend attaccato (dovrebbero essere persone diverse). */
+  festivoWeekendClash(personId: string, date: string): boolean {
+    return festivoWeekendPartners(date).some((d) => this.slots(personId, d).some((s) => SLOT_INFO[s].fascia !== 'N'));
   }
 }
 
@@ -94,14 +113,20 @@ export function countAssignments(assignments: Assignment[]): History {
   return h;
 }
 
-/** Un blocco Ped Urg inizia con Ped Urg pomeriggio di venerdì. */
-const isBlockStart = (a: { date: string; slot: SlotCode }) => a.slot === 'PEDU_P' && weekday(a.date) === 5;
+/** Un blocco Ped Urg inizia con Ped Urg pomeriggio di venerdì, o con Ped Urg del sabato se il venerdì è festivo. */
+const isBlockStart = (a: { date: string; slot: SlotCode }) =>
+  !isFestivoFeriale(a.date) &&
+  ((a.slot === 'PEDU_P' && weekday(a.date) === 5) || (a.slot === 'PEDU_M' && weekday(a.date) === 6 && isFestivoFeriale(addDays(a.date, -1))));
 /** Un weekend di OBI inizia con OBI mattina di sabato. */
 const isObiWeekendStart = (a: { date: string; slot: SlotCode }) => a.slot === 'OBI_M' && weekday(a.date) === 6;
 
-/** Giorni di sabato/domenica lavorati, blocchi Ped Urg e weekend di OBI iniziati, per persona (la ruota comune non conta). */
+/**
+ * Giorni di sabato/domenica lavorati, giorni festivi infrasettimanali lavorati, blocchi Ped Urg e weekend di OBI
+ * iniziati, per persona (la ruota comune non conta).
+ */
 export function countExtras(assignments: Assignment[]): ExtraHistory {
   const days = new Map<string, Set<string>>();
+  const festivi = new Map<string, Set<string>>();
   const out: ExtraHistory = {};
   for (const a of assignments) {
     if (!isPerson(a.who)) continue;
@@ -109,8 +134,10 @@ export function countExtras(assignments: Assignment[]): ExtraHistory {
     if (isBlockStart(a)) row.blocks++;
     if (isObiWeekendStart(a)) row.obiWeekends!++;
     if (isWeekend(a.date)) days.set(a.who, (days.get(a.who) ?? new Set()).add(a.date));
+    if (isFestivoFeriale(a.date)) festivi.set(a.who, (festivi.get(a.who) ?? new Set()).add(a.date));
   }
   for (const [p, d] of days) out[p].weekend = d.size;
+  for (const [p, d] of festivi) out[p].festivi = d.size;
   return out;
 }
 
@@ -127,8 +154,12 @@ export const WEIGHTS = {
   night: 6,
   /** per ogni giorno di weekend già lavorato (solo per i posti di sabato e domenica) */
   weekend: 4,
-  /** se il posto viola lo smonto dopo il weekend */
+  /** per ogni giorno festivo infrasettimanale già lavorato (solo per i posti dei festivi) */
+  festivo: 4,
+  /** se il posto viola lo smonto dopo il weekend o dopo il festivo */
   weekendRest: 8,
+  /** se la persona lavora di giorno sia nel festivo infrasettimanale sia nel weekend attaccato */
+  festivoWeekend: 40,
   /** se il posto porta un V anno oltre il tetto di weekend nel mese (anche una sola giornata conta come weekend) */
   weekendCap: 40,
   /** per ogni notte in più nella stessa settimana (lun–dom), anche se collegata (alti del sabato → notte di domenica) */
@@ -147,8 +178,10 @@ export const WEIGHTS = {
 export const COST = {
   /** per ogni posto scoperto */
   hole: 1000,
-  /** per ogni smonto dopo il weekend non rispettato */
+  /** per ogni smonto dopo il weekend o dopo il festivo non rispettato */
   weekendRest: 15,
+  /** per ogni turno di giorno nel festivo dato a chi lavora di giorno nel weekend attaccato */
+  festivoWeekend: 60,
   /** per ogni weekend oltre il tetto mensile, per persona */
   weekendCap: 60,
   /** per ogni notte oltre la prima nella stessa settimana (lun–dom), per persona */
@@ -161,6 +194,8 @@ export const COST = {
   spreadTotal: 2,
   /** squilibrio: giorni di weekend lavorati */
   spreadWeekend: 2,
+  /** squilibrio: giorni festivi infrasettimanali lavorati */
+  spreadFestivi: 2,
   /** squilibrio: ogni tipo di turno */
   spreadFamily: 1,
   /** squilibrio in più per le notti */
@@ -189,6 +224,8 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const extra = input.extraHistory ?? {};
   const weekendDays = new Map<string, Set<string>>();
   const weekendOf = (p: string) => (extra[p]?.weekend ?? 0) + (weekendDays.get(p)?.size ?? 0);
+  const festivoDays = new Map<string, Set<string>>();
+  const festiviOf = (p: string) => (extra[p]?.festivi ?? 0) + (festivoDays.get(p)?.size ?? 0);
   const monthBlocks: Record<string, number> = {};
   const blocksOf = (p: string) => (extra[p]?.blocks ?? 0) + (monthBlocks[p] ?? 0);
   const monthObi: Record<string, number> = {};
@@ -196,6 +233,7 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
   const bump = (p: string, slot: SlotCode, date: string) => {
     countOf(p)[SLOT_INFO[slot].family]++;
     if (isWeekend(date)) weekendDays.set(p, (weekendDays.get(p) ?? new Set()).add(date));
+    if (isFestivoFeriale(date)) festivoDays.set(p, (festivoDays.get(p) ?? new Set()).add(date));
     if (isBlockStart({ date, slot })) monthBlocks[p] = (monthBlocks[p] ?? 0) + 1;
     if (isObiWeekendStart({ date, slot })) monthObi[p] = (monthObi[p] ?? 0) + 1;
   };
@@ -247,7 +285,10 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     let s = countOf(p)[SLOT_INFO[pos.slot].family] * WEIGHTS.family + totalOf(p) * WEIGHTS.total;
     if (isWeekend(pos.date)) s += weekendOf(p) * WEIGHTS.weekend;
     if (pos.slot === 'PS_NOTTE') s += countOf(p).PS_NOTTE * WEIGHTS.night;
-    if (board.weekendRestDue(p, pos.date)) s += WEIGHTS.weekendRest;
+    if (isFestivoFeriale(pos.date)) s += festiviOf(p) * WEIGHTS.festivo;
+    if (board.restDue(p, pos.date)) s += WEIGHTS.weekendRest;
+    // Festivo attaccato al weekend: persone diverse (solo turni di giorno).
+    if (SLOT_INFO[pos.slot].fascia !== 'N' && board.festivoWeekendClash(p, pos.date)) s += WEIGHTS.festivoWeekend;
     // Blocco Ped Urg: meglio chi è disponibile anche nei giorni successivi del blocco.
     s += blockMissing(p, pos) * WEIGHTS.blockMissing;
     if (overCap(p, pos)) s += WEIGHTS.weekendCap;
@@ -335,7 +376,12 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
 
   // Costo: buchi, smonti del weekend non rispettati, blocchi spezzati, squilibrio dentro ogni anno di corso.
   let restViolations = 0;
-  for (const a of out) if (a.who !== RUOTA && board.weekendRestDue(a.who, a.date)) restViolations++;
+  let festivoClashes = 0;
+  for (const a of out) {
+    if (!isPerson(a.who)) continue;
+    if (board.restDue(a.who, a.date)) restViolations++;
+    if (isFestivoFeriale(a.date) && SLOT_INFO[a.slot].fascia !== 'N' && board.festivoWeekendClash(a.who, a.date)) festivoClashes++;
+  }
   const byKey = new Map(out.map((a) => [keyOf(a), a.who]));
   let brokenLinks = 0;
   for (const day of demand) {
@@ -371,12 +417,14 @@ function runOnce(input: EngineInput, roster: Roster, demand: Position[][], rng: 
     const ids = roster.activeOn(lastDay).filter((x) => x.year === year).map((x) => x.person.id);
     spread += variance(ids.map(totalOf)) * COST.spreadTotal;
     spread += variance(ids.map(weekendOf)) * COST.spreadWeekend;
+    spread += variance(ids.map(festiviOf)) * COST.spreadFestivi;
     for (const f of BALANCED) spread += variance(ids.map((p) => countOf(p)[f])) * COST.spreadFamily;
     spread += variance(ids.map((p) => countOf(p).PS_NOTTE)) * COST.spreadNight;
   }
   return { assignments: out, holes, cost:
       holes.length * COST.hole +
       restViolations * COST.weekendRest +
+      festivoClashes * COST.festivoWeekend +
       overWeekends * COST.weekendCap +
       doubleNights * COST.weekNights +
       noWeekend * COST.noWeekend +
@@ -453,7 +501,10 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     const twelveH = twelveHours.get(a.date)?.includes(mine) ?? false;
     if (same.length > 1 && !twelveH) w('warn', 'Più turni nello stesso giorno');
     if (board.slots(a.who, addDays(a.date, -1)).includes('PS_NOTTE')) w('error', 'Smonto notte non rispettato');
-    if (board.weekendRestDue(a.who, a.date)) w('warn', 'Smonto dopo il weekend non rispettato');
+    const rest = board.restDue(a.who, a.date);
+    if (rest) w('warn', rest);
+    if (SLOT_INFO[a.slot].fascia !== 'N' && board.festivoWeekendClash(a.who, a.date))
+      w('warn', isFestivoFeriale(a.date) ? 'Lavora anche nel weekend attaccato al festivo' : 'Lavora anche nel festivo attaccato al weekend');
     if (a.slot === 'PS_NOTTE') {
       const nights = board.nightsInWeek(a.who, a.date);
       if (nights[0] !== a.date) w('warn', `Più di una notte nella stessa settimana (${nights.length})`);

@@ -10,6 +10,11 @@ import {
   countAssignments,
   countExtras,
   countWeekends,
+  easter,
+  festiviBetween,
+  festivoName,
+  isFestivoFeriale,
+  isPerson,
   daysOfMonth,
   isWeekend,
   keyOf,
@@ -559,5 +564,79 @@ describe('motore', () => {
     expect(validate(exampleInput(), [ext]).filter((w) => w.personId === ext.who)).toEqual([]);
     const r = suggestMonth(exampleInput({ locked: [ext] }));
     expect(r.assignments.some((a) => keyOf(a) === keyOf(ext))).toBe(false);
+  });
+});
+
+describe('festivi', () => {
+  it('lista ufficiale italiana con Pasqua mobile, 4 ottobre e 31 dicembre; niente 24 dicembre', () => {
+    expect(easter(2027)).toBe('2027-03-28');
+    expect(easter(2026)).toBe('2026-04-05');
+    expect(festiviBetween('2026-11-01', '2027-10-31').map((f) => f.date)).toEqual([
+      '2026-11-01', '2026-12-08', '2026-12-25', '2026-12-26', '2026-12-31', '2027-01-01', '2027-01-06',
+      '2027-03-28', '2027-03-29', '2027-04-25', '2027-05-01', '2027-06-02', '2027-08-15', '2027-10-04',
+    ]);
+    expect(festivoName('2026-12-24')).toBeNull();
+    expect(isFestivoFeriale('2026-11-01')).toBe(false); // domenica: già weekend
+    expect(isFestivoFeriale('2026-12-08')).toBe(true);
+  });
+
+  it('festivo infrasettimanale: schema del sabato (12h), notte del giorno della settimana', () => {
+    const day = buildDemand('2026-12-08', { vPresent: true }); // martedì
+    const slots = day.filter((p) => !p.manualOnly).map((p) => `${p.slot}#${p.idx}:${p.years.join('')}:${p.alsoSlots.join('')}`);
+    expect(slots.sort()).toEqual(
+      [
+        'PS_ALTI_M#0:5:PS_ALTI_P', 'PS_ALTI_M#1:3:PS_ALTI_P', 'PS_VERDI_M#0:3:PS_VERDI_P',
+        'PS_NOTTE#0:5:', 'PS_NOTTE#1:4:', 'OBI_M#0:5:OBI_P', 'PEDU_M#0:4:PEDU_P',
+      ].sort(),
+    );
+    expect(day.some((p) => p.slot === 'AMB' || OPTIONAL_WARDS.includes(p.slot))).toBe(false);
+    expect(day.every((p) => !p.prevDaySlot && !p.planBlock && !p.blockAhead?.length)).toBe(true);
+  });
+
+  it('venerdì festivo: il blocco Ped Urg parte dal sabato; lunedì festivo: il blocco finisce la domenica', () => {
+    const fri = buildDemand('2026-12-25', { vPresent: true });
+    expect(fri.find((p) => p.slot === 'PEDU_M')!.planBlock).toBeFalsy();
+    const sat = buildDemand('2026-12-26', { vPresent: true }).find((p) => p.slot === 'PEDU_M')!;
+    expect([sat.planBlock, sat.prevDaySlot, sat.blockAhead]).toEqual([true, undefined, [['PEDU_M', 'PEDU_P'], ['PEDU_M']]]);
+    const friBeforePasquetta = buildDemand('2027-03-26', { vPresent: true }).find((p) => p.slot === 'PEDU_P')!;
+    expect(friBeforePasquetta.blockAhead).toEqual([['PEDU_M', 'PEDU_P'], ['PEDU_M', 'PEDU_P']]);
+  });
+
+  const dec = exampleInput({ month: '2026-12', params: { month: '2026-12', exams: [] } });
+  const res = suggestMonth(dec);
+  const days = (who: string) => new Set(res.assignments.filter((a) => a.who === who).map((a) => a.date));
+
+  it('chi fa 12h nel festivo smonta il giorno dopo', () => {
+    for (const f of ['2026-12-08', '2026-12-25', '2026-12-31']) {
+      const people = new Set(res.assignments.filter((a) => a.date === f && a.slot !== 'PS_NOTTE' && isPerson(a.who)).map((a) => a.who));
+      for (const p of people) expect(days(p).has(addDays(f, 1)), `${p} ${f}`).toBe(false);
+    }
+  });
+
+  it('festivo attaccato al weekend: di giorno persone diverse', () => {
+    const dayWorkers = (d: string) =>
+      new Set(res.assignments.filter((a) => a.date === d && a.slot !== 'PS_NOTTE' && isPerson(a.who)).map((a) => a.who));
+    const fest = dayWorkers('2026-12-25');
+    for (const d of ['2026-12-26', '2026-12-27']) for (const p of dayWorkers(d)) expect(fest.has(p), `${p} ${d}`).toBe(false);
+    expect(validate(dec, res.assignments).filter((w) => /festivo/.test(w.message))).toEqual([]);
+  });
+
+  it('countExtras conta i festivi infrasettimanali lavorati, non quelli di weekend', () => {
+    const x = countExtras([
+      { date: '2026-12-08', slot: 'OBI_M', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-12-08', slot: 'OBI_P', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-12-26', slot: 'OBI_M', idx: 0, who: 'alfa', source: 'manual' },
+    ]);
+    expect(x.alfa.festivi).toBe(1);
+    expect(x.alfa.weekend).toBe(1);
+  });
+
+  it('segnala lo smonto dopo il festivo e il festivo attaccato al weekend', () => {
+    const a = (date: string, slot: Assignment['slot']): Assignment => ({ date, slot, idx: 0, who: 'alfa', source: 'manual' });
+    const w = validate(dec, [a('2026-12-25', 'OBI_M'), a('2026-12-25', 'OBI_P'), a('2026-12-27', 'PS_ALTI_M'), a('2026-12-08', 'OBI_M'), a('2026-12-08', 'OBI_P'), a('2026-12-09', 'PS_ALTI_M')]);
+    const msgs = w.filter((x) => x.personId === 'alfa').map((x) => `${x.date} ${x.message}`);
+    expect(msgs).toContain('2026-12-09 Smonto dopo il festivo non rispettato');
+    expect(msgs).toContain('2026-12-27 Lavora anche nel festivo attaccato al weekend');
+    expect(msgs).toContain('2026-12-25 Lavora anche nel weekend attaccato al festivo');
   });
 });

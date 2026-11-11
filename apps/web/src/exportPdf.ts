@@ -1,10 +1,10 @@
 import type { CellDef } from 'jspdf-autotable';
-import { COLUMNS, daysOfMonth, isWeekend, type Year } from '@medtools/engine';
+import { COLUMNS, daysOfMonth, festivoName, isWeekend, type Year } from '@medtools/engine';
 import { YEAR_LABEL } from './store';
 import { dayLabel, monthLabel, shortDate } from './format';
 import { calendarCell, type ExcelInput } from './exportExcel';
 import { headerRows } from './calendarHeaders';
-import { SUMMARY_COLS, SUMMARY_HEADERS, summarize, summaryValue } from './summary';
+import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_NOTE, summarize, summaryValue } from './summary';
 
 /** Stessi colori dell'export Excel (e di styles.css), in RGB. */
 const COLOR = {
@@ -13,6 +13,7 @@ const COLOR = {
   3: [253, 226, 234],
   ruota: [219, 234, 254],
   weekend: [238, 240, 244],
+  festivo: [253, 236, 236],
   unused: [243, 244, 246],
   head: [31, 59, 99],
   subhead: [220, 227, 238],
@@ -58,11 +59,12 @@ export async function exportPdf({ data, month, demand, cells, roster, headers }:
 
   const body: CellDef[][] = demand.map((day) => {
     const date = day[0].date;
-    const weekend = isWeekend(date);
+    const festivo = !!festivoName(date);
+    const weekend = isWeekend(date) || festivo;
     const { dow, day: dd } = dayLabel(date);
     const bg: RGB = weekend ? [...COLOR.weekend] : [255, 255, 255];
     return [
-      { content: `${dow} ${dd}`, styles: { fontStyle: 'bold', fillColor: bg, textColor: (weekend ? COLOR.red : COLOR.head) as RGB, halign: 'left' } },
+      { content: `${dow} ${dd}`, styles: { fontStyle: 'bold', fillColor: festivo ? ([...COLOR.festivo] as RGB) : bg, textColor: (weekend ? COLOR.red : COLOR.head) as RGB, halign: 'left' } },
       ...COLUMNS.map(({ slot, idx }) => {
         const { text, color } = calendarCell({ data, cells, roster }, day, slot, idx);
         return { content: text, styles: { fillColor: color ? ([...COLOR[color]] as RGB) : bg, fontStyle: weekend ? 'bold' : 'normal' } } as CellDef;
@@ -139,7 +141,7 @@ export async function exportPdf({ data, month, demand, cells, roster, headers }:
   doc.setTextColor(...COLOR.muted);
   doc.text(
     doc.splitTextToSize(
-      'Turni del mese per tipo; mattina e pomeriggio insieme. Un turno da 12h conta come due. Sab/dom: Giorni = giorni di sabato o domenica lavorati (non weekend); Weekend = weekend distinti con almeno un turno. Il totale esclude Bambi e i reparti facoltativi; la ruota comune non è conteggiata.',
+      SUMMARY_NOTE,
       pageW - 2 * margin,
     ),
     margin,

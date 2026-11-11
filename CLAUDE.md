@@ -159,6 +159,16 @@ Weekend: il ciclo **V + IV → IV + RC → V + IV → V + RC** continua da un me
 
 Dopo l'uscita del V anno (28–31 ottobre) autonomo e notti del V anno passano a IV o III anno, come gli altri suoi posti. **[detto]** (10/10/2026)
 
+### Festivi **[detto]** (11/11/2026)
+
+- Lista: festivi nazionali italiani (1/1, 6/1, Pasqua, Pasquetta, 25/4, 1/5, 2/6, 15/8, 4/10 San Francesco dal 2026, 1/11, 8/12, 25/12, 26/12) più il **31 dicembre**. **Niente santo patrono**; il **24 dicembre non è festivo** (resta super festivo solo per la notte). Pasqua calcolata ogni anno. In codice: `packages/engine/src/holidays.ts` (`festivoName`, `isFestivoFeriale`, `festiviBetween`).
+- Un festivo **dal lunedì al venerdì** segue lo **schema del sabato** di giorno (12h: PS alti V + III, verdi III, OBI V, Ped Urg IV; niente autonomo, ambulatorio, Ped Urg del III, reparti). I festivi di sabato o domenica non cambiano niente.
+- **Notte**: resta quella del giorno della settimana (per ora); i super festivi prevalgono.
+- **Smonto il giorno dopo** per chi fa 12h nel festivo (preferenza, avviso).
+- Il festivo **non continua il weekend**: se è attaccato (venerdì o lunedì), di giorno lo coprono **persone diverse** da quelle del weekend (preferenza forte `WEIGHTS.festivoWeekend`, `COST.festivoWeekend`, avviso). Il blocco Ped Urg parte dal sabato se il venerdì è festivo e finisce la domenica se il lunedì è festivo.
+- **Contatore separato** dei giorni festivi lavorati (lun–ven), bilanciato dentro ogni anno di corso con lo storico (`extraHistory.festivi`, `WEIGHTS.festivo`, `COST.spreadFestivi`); non conta nei giorni di weekend né nel tetto di weekend. Panoramica: colonna **Festivi (lun–ven)**.
+- Evidenziati in rosso leggero in Disponibilità, Calendario, Excel e PDF; tabella dei festivi dell'anno nella scheda Regole.
+
 ### Vincoli per gruppo **[detto]**
 
 III, IV e V anno sono persone con un nome. I vincoli valgono per loro:
@@ -302,6 +312,8 @@ Cambiato il 14/10/2026: il venerdì pomeriggio il secondo posto agli alti è del
 
 Cambiati il 10/10/2026: niente autonomo nel weekend; notti con ruota comune lun/mer/ven e IV anno mar/gio; notti del weekend in un ciclo continuo di 4 weekend (V + IV, IV + RC, V + IV, V + RC); nei weekend IV + RC il V anno degli alti del sabato non fa la notte di domenica; super festivi solo V + IV; esclusione personale dall'OBI.
 
+Cambiato l'11/11/2026: festivi infrasettimanali con lo schema del sabato (vedi "Festivi").
+
 Aperti: nessuno. Restano le assunzioni marcate **[assunzione]** nel documento (es. chi lavora un solo giorno del weekend non ha smonto; chi esce resta in archivio; entra un nuovo III anno a novembre).
 
 ---
@@ -400,7 +412,6 @@ medtools/
 - Assunzioni del prototipo, da rivedere insieme (sono in `buildDemand`):
   - la ruota comune solo come ripiego per le notti lun–ven;
   - lo scambio alti/verdi del III anno la domenica è una preferenza, non un vincolo;
-  - festivi infrasettimanali non gestiti.
 - Export Excel (`apps/web/src/exportExcel.ts`, libreria ExcelJS caricata solo al clic): foglio "Turni" formattato per la stampa (A4 orizzontale, colori per anno, legenda) e foglio "Riepilogo" con i turni per persona.
 - Calendario, **sostituzioni** (02/10/2026) **[detto]**: in ogni cella si può mettere a mano chiunque, di qualsiasi anno; con "✎ Altro nome…" si scrive un nome. Se corrisponde (senza maiuscole/accenti, o unico nome che lo contiene, con conferma) a una persona della scheda Persone diventa quella persona e **conta** in Panoramica e nel bilanciamento; altrimenti si salva come nome esterno (`EXTERNAL` + nome, `isPerson` in `packages/engine/src/types.ts`): si vede e si esporta, ma non si conta né si controlla. Un III anno messo a mano dove la regola non lo prevede (OBI, Ped Urg pomeriggio) dà un avviso, non un errore.
 - Calendario, **"I miei turni"** (02/10/2026): riquadro sopra la griglia con "Io sono: [nome]" (salvato solo nel browser, `localStorage` `medtools:me`). Mostra i turni del mese di quella persona in sequenza con le frecce (M+P dello stesso tipo = "12h"), con "Copia" per incollarla come testo **[detto]**, i totali per tipo (da `summary.ts`, come la Panoramica), le assenze e un export `.ics` (eventi di tutto il giorno: gli orari dei turni non sono nell'app). Nella griglia le sue celle e i suoi giorni sono evidenziati. Codice in `apps/web/src/views/MyShifts.tsx`.

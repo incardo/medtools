@@ -153,9 +153,9 @@ export type History = Record<string, Partial<Record<Family, number>>>;
 
 /**
  * Altri conteggi per il bilanciamento: giorni di weekend lavorati, blocchi Ped Urg (ven P → lun M) iniziati
- * e weekend di OBI (sab + dom) del V anno.
+ * e weekend di OBI (sab + dom) del V anno, giorni festivi infrasettimanali lavorati.
  */
-export type ExtraHistory = Record<string, { weekend: number; blocks: number; obiWeekends?: number }>;
+export type ExtraHistory = Record<string, { weekend: number; blocks: number; obiWeekends?: number; festivi?: number }>;
 
 export interface EngineInput {
   month: string;

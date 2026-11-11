@@ -1,4 +1,5 @@
 import { addDays, isWeekend, weekday, weekendKey } from './dates';
+import { isFestivoFeriale } from './holidays';
 import type { Fascia, Family, Position, SlotCode, Year } from './types';
 
 export const SLOT_INFO: Record<SlotCode, { family: Family; fascia: Fascia; label: string; allDay?: boolean }> = {
@@ -105,6 +106,16 @@ export function ruotaCanCover(slot: SlotCode, date: string): boolean {
   return (wd >= 1 && wd <= 5) || nightPlan(date).includes('R');
 }
 
+/**
+ * Giorni del blocco Ped Urg dopo il giorno d'inizio: dal venerdì (offset 0) sab 12h, dom 12h, lun M;
+ * dal sabato (offset 1, venerdì festivo) dom 12h, lun M. Il lunedì festivo non fa parte del blocco.
+ */
+function peduBlockAhead(start: string, offset: 0 | 1): SlotCode[][] {
+  const out: SlotCode[][] = offset === 0 ? [['PEDU_M', 'PEDU_P'], ['PEDU_M', 'PEDU_P']] : [['PEDU_M', 'PEDU_P']];
+  if (!isFestivoFeriale(addDays(start, 3 - offset))) out.push(['PEDU_M']);
+  return out;
+}
+
 interface DemandContext {
   /** Il V anno c'è quel giorno (non oltre l'ultimo giorno dell'anno). */
   vPresent: boolean;
@@ -140,32 +151,58 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
   const nightYears = (w: NightWho): Year[] => (w === 'R' ? [] : who(w));
   const vNight = (d: string) => v && nightPlan(d)[0] === 5;
 
-  if (isWeekend(date)) {
+  // Notti nella stessa posizione dell'elenco di sempre (l'ordine conta per i pareggi del motore).
+  const pushNights = () => {
+    if (isWeekend(date)) {
+      // Notte: secondo il ciclo dei weekend (V + IV, IV + ruota comune, V + ruota comune).
+      // La domenica il V anno della notte è chi ha fatto gli alti il sabato.
+      drafts.push({ slot: 'PS_NOTTE', idx: 0, years: nightYears(night[0]), ...(vNight(date) && wd === 0 && { prevDaySlot: 'PS_ALTI_M' }) });
+    } else {
+      // Notte (anche nei festivi infrasettimanali): un V anno (chi fa la notte di venerdì fa la domenica gli alti 12h) e,
+      // secondo il giorno, la ruota comune (lun/mer/ven) o un IV anno (mar/gio, super festivi).
+      // Il IV anno di notte conta come una notte, anche nel bilanciamento.
+      drafts.push({ slot: 'PS_NOTTE', idx: 0, years: nightYears(night[0]), ...(v && wd === 5 && { blockAhead: [[], ['PS_ALTI_M', 'PS_ALTI_P']] }) });
+    }
+    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: nightYears(night[1]) });
+  };
+
+  const festivo = isFestivoFeriale(date);
+  if (isWeekend(date) || festivo) {
+    // Weekend, e festivo infrasettimanale con lo schema del sabato: 12h, senza autonomo, ambulatorio,
+    // Ped Urg del III anno né reparti facoltativi. Il festivo non continua il weekend: nessun collegamento.
     const sunday = wd === 0;
+    // Sabato dopo un venerdì festivo: il blocco Ped Urg parte dal sabato.
+    const afterFestivo = wd === 6 && isFestivoFeriale(addDays(date, -1));
     // V anno agli alti 12h. Chi fa il sabato fa la notte di domenica (se la domenica la notte è del V anno);
     // la domenica tocca a chi ha fatto la notte di venerdì (mai la stessa persona del sabato).
     drafts.push(
       sunday
         ? { slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], notPrevDay: true, ...(v && { prevDaySlot: 'PS_NOTTE', prevDays: 2 }) }
-        : { slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], ...(vNight(addDays(date, 1)) && { blockAhead: [['PS_NOTTE']] }) },
+        : { slot: 'PS_ALTI_M', idx: 0, years: V, alsoSlots: ['PS_ALTI_P'], ...(!festivo && vNight(addDays(date, 1)) && { blockAhead: [['PS_NOTTE']] }) },
     );
     // III anno: uno agli alti e uno ai verdi, 12h ciascuno; la domenica si scambiano.
     drafts.push({ slot: 'PS_ALTI_M', idx: 1, years: [3], alsoSlots: ['PS_ALTI_P'], prevDaySlot: sunday ? 'PS_VERDI_M' : undefined });
     // L'autonomo nel weekend non c'è.
     drafts.push({ slot: 'PS_VERDI_M', idx: 0, years: [3], alsoSlots: ['PS_VERDI_P'], prevDaySlot: sunday ? 'PS_ALTI_M' : undefined });
-    // Notte: secondo il numero del weekend nel mese (V + IV, IV + ruota comune, V + ruota comune).
-    // La domenica il V anno della notte è chi ha fatto gli alti il sabato.
-    drafts.push({ slot: 'PS_NOTTE', idx: 0, years: nightYears(night[0]), ...(vNight(date) && sunday && { prevDaySlot: 'PS_ALTI_M' }) });
-    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: nightYears(night[1]) });
-    // OBI 12h: la stessa persona sabato e domenica (weekend di OBI, a rotazione tra i V anno).
+    pushNights();
+    // OBI 12h: la stessa persona sabato e domenica (weekend di OBI, a rotazione tra i V anno); nel festivo da solo.
     drafts.push(
-      sunday
-        ? { slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'], prevDaySlot: 'OBI_M' }
-        : { slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'], blockAhead: [['OBI_M', 'OBI_P']], planBlock: true },
+      festivo
+        ? { slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'] }
+        : sunday
+          ? { slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'], prevDaySlot: 'OBI_M' }
+          : { slot: 'OBI_M', idx: 0, years: V, alsoSlots: ['OBI_P'], blockAhead: [['OBI_M', 'OBI_P']], planBlock: true },
     );
-    // Ped Urg 12h: una sola persona per mattina e pomeriggio
-    // Blocco Ped Urg del IV anno: stessa persona da venerdì pomeriggio a lunedì mattina.
-    drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'], prevDaySlot: sunday ? 'PEDU_M' : 'PEDU_P' });
+    // Ped Urg 12h: una sola persona per mattina e pomeriggio.
+    // Blocco Ped Urg del IV anno: stessa persona da venerdì pomeriggio a lunedì mattina (dal sabato se il venerdì è festivo,
+    // fino alla domenica se il lunedì è festivo).
+    drafts.push(
+      festivo
+        ? { slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'] }
+        : afterFestivo
+          ? { slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'], blockAhead: peduBlockAhead(date, 1), planBlock: true }
+          : { slot: 'PEDU_M', idx: 0, years: [4], alsoSlots: ['PEDU_P'], prevDaySlot: sunday ? 'PEDU_M' : 'PEDU_P' },
+    );
   } else {
     for (const f of ['M', 'P'] as const) {
       const { alti, verdi, auto } = PS_FERIALE[wd][f];
@@ -173,11 +210,7 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
       drafts.push({ slot: `PS_AUTO_${f}`, idx: 0, years: who(auto) });
       drafts.push({ slot: `PS_VERDI_${f}`, idx: 0, years: who(verdi) });
     }
-    // Notte: un V anno (chi fa la notte di venerdì fa la domenica gli alti 12h) e, secondo il giorno,
-    // la ruota comune (lun/mer/ven) o un IV anno (mar/gio, super festivi).
-    // Il IV anno di notte conta come una notte, anche nel bilanciamento.
-    drafts.push({ slot: 'PS_NOTTE', idx: 0, years: nightYears(night[0]), ...(v && wd === 5 && { blockAhead: [[], ['PS_ALTI_M', 'PS_ALTI_P']] }) });
-    drafts.push({ slot: 'PS_NOTTE', idx: 1, years: nightYears(night[1]) });
+    pushNights();
     drafts.push({ slot: 'OBI_M', idx: 0, years: V });
     drafts.push({ slot: 'OBI_P', idx: 0, years: V });
     drafts.push({ slot: 'PEDU_M', idx: 0, years: [4], prevDaySlot: wd === 1 ? 'PEDU_M' : undefined });
@@ -186,13 +219,14 @@ export function buildDemand(date: string, ctx: DemandContext): Position[] {
       slot: 'PEDU_P',
       idx: 0,
       years: [4],
-      ...(wd === 5 && { blockAhead: [['PEDU_M', 'PEDU_P'], ['PEDU_M', 'PEDU_P'], ['PEDU_M']], planBlock: true }),
+      ...(wd === 5 && { blockAhead: peduBlockAhead(date, 0), planBlock: true }),
     });
     // Ambulatorio solo giovedì e venerdì
     if (wd === 4 || wd === 5) drafts.push({ slot: 'AMB', idx: 0, years: [3] });
     // Reparti facoltativi: V o IV anno, a mano.
     for (const slot of OPTIONAL_WARDS) drafts.push({ slot, idx: 0, years: [5, 4], manualOnly: true });
   }
+
   drafts.push({ slot: 'BAMBI', idx: 0, years: [3, 4, 5], manualOnly: true });
 
   return drafts.map((d) => ({

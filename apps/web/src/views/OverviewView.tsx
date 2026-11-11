@@ -8,7 +8,7 @@ import { SUMMARY_COLS, SUMMARY_HEADERS, SUMMARY_TURNS, slotsByYear, summarize, s
 const HEAD_ROWS = headerRows(SUMMARY_HEADERS);
 const ENDS = groupEnds(HEAD_ROWS);
 /** Colonne confrontate con la media del proprio anno di corso (le assenze no). */
-const BALANCED: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key).filter((k) => !WARD_KEYS.includes(k)), 'total', 'weekend'];
+const BALANCED: SummaryCol[] = [...SUMMARY_TURNS.map((t) => t.key).filter((k) => !WARD_KEYS.includes(k)), 'total', 'weekend', 'festivi'];
 
 type Mode = 'mese' | 'anno';
 
@@ -101,7 +101,8 @@ export function OverviewView({ data, month }: ViewProps) {
       <p className="hint">
         Turni per tipo; mattina e pomeriggio si contano insieme (in PS restano separati alti, verdi e notte). Un turno da 12h conta come due. <b>Sab/dom · Giorni</b> = giorni di sabato o
         domenica lavorati (un 12h conta una volta), non il numero di weekend. <b>Sab/dom · Weekend</b> = weekend distinti con almeno un
-        turno (anche una sola giornata conta): per il V anno il tetto è {MAX_WEEKENDS[5]} al mese. Il totale esclude Bambi e i reparti facoltativi (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
+        turno (anche una sola giornata conta): per il V anno il tetto è {MAX_WEEKENDS[5]} al mese. <b>Festivi (lun–ven)</b> = giorni festivi infrasettimanali lavorati (un
+        12h conta una volta); i festivi che cadono di sabato o domenica sono già in Sab/dom e non si contano qui. Il totale esclude Bambi e i reparti facoltativi (fuori dal bilanciamento); la ruota comune non è conteggiata. Lo storico dell'anno si azzera a novembre.
       </p>
       <div className="legend">
         <span className="chip" style={{ background: 'rgba(46, 144, 250, 0.35)' }}>
