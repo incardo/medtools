@@ -181,8 +181,11 @@ export interface Warning {
   slot?: SlotCode;
   idx?: number;
   personId?: string;
-  level: 'error' | 'warn';
+  /** error = da correggere; warn = avviso; info = avviso leggero (es. mattina e pomeriggio alla stessa persona). */
+  level: 'error' | 'warn' | 'info';
   message: string;
+  /** Stesso problema su più celle (es. le due celle di un doppio turno): nell'elenco diventano una riga sola. */
+  group?: string;
 }
 
 export interface EngineResult {

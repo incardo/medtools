@@ -1,9 +1,9 @@
 import { addDays, countWeekends, daysOfMonth, isWeekend, weekStart, weekday, weekendKey } from './dates';
 import { Roster } from './roster';
 import { festivoWeekendPartners, isFestivoFeriale } from './holidays';
-import { SLOT_INFO, buildDemand, isPS, ruotaCanCover, yearCanCover } from './rules';
+import { SLOT_INFO, buildDemand, fasceOf, isPS, ruotaCanCover, yearCanCover } from './rules';
 import type { Assignment, EngineInput, EngineResult, ExtraHistory, Family, History, Position, SlotCode, Warning } from './types';
-import { RUOTA, isPerson } from './types';
+import { ABSENCE_INFO, RUOTA, isPerson } from './types';
 
 const BALANCED: Family[] = ['PS_ALTI', 'PS_AUTO', 'PS_VERDI', 'PS_NOTTE', 'OBI', 'PEDU', 'AMB'];
 
@@ -467,17 +467,19 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
       day.filter((p) => p.alsoSlots.length).map((p) => [p.slot, ...p.alsoSlots].map((s) => `${s}#${p.idx}`).sort().join()),
     ]),
   );
-  const byPersonDay = new Map<string, string[]>();
+  const byPersonDay = new Map<string, Assignment[]>();
   for (const a of assignments) {
     const k = `${a.who}|${a.date}`;
-    byPersonDay.set(k, [...(byPersonDay.get(k) ?? []), `${a.slot}#${a.idx}`]);
+    byPersonDay.set(k, [...(byPersonDay.get(k) ?? []), a]);
   }
+  const FASCIA_NAME = { M: 'mattina', P: 'pomeriggio', N: 'notte' } as const;
   const out: Warning[] = [];
 
   for (const a of assignments) {
     if (!a.who) continue;
-    const w = (level: Warning['level'], message: string) =>
-      out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level, message });
+    const w = (level: Warning['level'], message: string, group?: string) =>
+      // Senza gruppo esplicito: stessa persona e stesso giorno (es. le due celle di un 12h) = una riga nell'elenco.
+      out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level, message, group: group ?? `p|${a.who}|${a.date}` });
     if (a.who === RUOTA) {
       if (!ruotaCanCover(a.slot, a.date)) w('error', 'La ruota comune copre solo le notti previste (mai nei super festivi)');
       continue;
@@ -492,14 +494,37 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
     // Scelto a mano (es. una sostituzione): si segnala ma non è un errore.
     if (!yearCanCover(year, a.slot))
       w(a.source === 'manual' ? 'warn' : 'error', `Il ${['', '', '', 'III', 'IV', 'V'][year]} anno di norma non copre questo turno`);
-    const why = roster.unavailableForSlots(a.who, a.date, [a.slot]);
-    if (why) w('error', `Non disponibile (${why})`);
+    if (roster.unavailableForSlots(a.who, a.date, [a.slot])) {
+      // Cosa ha scritto la persona in Disponibilità, o l'esame del suo anno: si capisce subito da dove viene.
+      const kind = roster.absenceOf(a.who, a.date);
+      w(
+        'error',
+        kind && roster.unavailableForSlots(a.who, a.date, [a.slot]) === ABSENCE_INFO[kind].label
+          ? `Non disponibile: in Disponibilità ha segnato "${ABSENCE_INFO[kind].short}" (${ABSENCE_INFO[kind].label})`
+          : `Non disponibile: esame del ${['', '', '', 'III', 'IV', 'V'][year]} anno`,
+      );
+    }
     const excluded = roster.excludedFrom(a.who, [a.slot]);
     if (excluded) w(a.source === 'manual' ? 'warn' : 'error', `Eccezione personale: ${excluded}`);
-    const same = board.slots(a.who, a.date);
-    const mine = [...(byPersonDay.get(`${a.who}|${a.date}`) ?? [])].sort().join();
+    // Più turni nello stesso giorno. Stessa fascia (es. PS M e Ped Urg M): errore, la persona non può essere in due posti.
+    // Notte e turno di giorno: avviso. Mattina e pomeriggio in posti diversi: avviso leggero. Il 12h previsto non si segnala.
+    const sameDay = byPersonDay.get(`${a.who}|${a.date}`) ?? [];
+    const others = sameDay.filter((o) => o !== a);
+    const clash = others.filter((o) => fasceOf(o.slot).some((f) => fasceOf(a.slot).includes(f)));
+    const mine = sameDay.map((o) => `${o.slot}#${o.idx}`).sort().join();
     const twelveH = twelveHours.get(a.date)?.includes(mine) ?? false;
-    if (same.length > 1 && !twelveH) w('warn', 'Più turni nello stesso giorno');
+    if (clash.length) {
+      const f = fasceOf(a.slot).find((x) => clash.some((o) => fasceOf(o.slot).includes(x)))!;
+      // Tutti i turni della persona in quella fascia: stesso messaggio su ogni cella coinvolta.
+      const what = sameDay
+        .filter((o) => fasceOf(o.slot).includes(f))
+        .map((o) => SLOT_INFO[o.slot].label + (sameDay.some((x) => x !== o && x.slot === o.slot) ? ` (${o.idx + 1}° posto)` : ''))
+        .sort();
+      w('error', `Due turni nella stessa fascia (${FASCIA_NAME[f]}): ${what.join(' e ')}`, `fascia|${a.who}|${a.date}|${f}`);
+    } else if (others.length && !twelveH) {
+      if ([a, ...others].some((o) => o.slot === 'PS_NOTTE')) w('warn', 'Notte e turno di giorno nello stesso giorno', `nd|${a.who}|${a.date}`);
+      else w('info', 'Mattina e pomeriggio nello stesso giorno', `mp|${a.who}|${a.date}`);
+    }
     if (board.slots(a.who, addDays(a.date, -1)).includes('PS_NOTTE')) w('error', 'Smonto notte non rispettato');
     const rest = board.restDue(a.who, a.date);
     if (rest) w('warn', rest);
@@ -515,7 +540,7 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
   const exists = new Set(demand.flatMap((day) => day.flatMap((p) => [p.slot, ...p.alsoSlots].map((s) => keyOf({ ...p, slot: s })))));
   for (const a of assignments) {
     if (a.who && !exists.has(keyOf(a)))
-      out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level: 'warn', message: 'Posto non previsto in questo giorno' });
+      out.push({ date: a.date, slot: a.slot, idx: a.idx, personId: a.who, level: 'warn', message: 'Posto non previsto in questo giorno', group: `p|${a.who}|${a.date}` });
   }
 
   // Tetto di weekend nel mese: avviso sul primo giorno del weekend di troppo.
@@ -546,10 +571,15 @@ export function validate(input: EngineInput, assignments: Assignment[]): Warning
       }
       // Turno da 12h: tutte le fasce alla stessa persona.
       for (const s of pos.alsoSlots) {
-        const other = byKey.get(keyOf({ ...pos, slot: s }))?.who;
+        const main = byKey.get(keyOf(pos));
+        const twin = byKey.get(keyOf({ ...pos, slot: s }));
+        const other = twin?.who;
         if (who && other && other !== who) {
+          // Diviso a mano (es. mattina e pomeriggio a due persone in un festivo): avviso, come le altre sostituzioni.
+          const level = main?.source === 'manual' || twin?.source === 'manual' ? 'warn' : 'error';
+          const group = `12h|${pos.date}|${pos.slot}|${pos.idx}`;
           for (const [slot, p] of [[pos.slot, who], [s, other]] as const) {
-            out.push({ date: pos.date, slot, idx: pos.idx, personId: p, level: 'error', message: 'Turno da 12h: mattina e pomeriggio alla stessa persona' });
+            out.push({ date: pos.date, slot, idx: pos.idx, personId: p, level, message: 'Turno da 12h diviso tra due persone', group });
           }
         }
       }

@@ -295,7 +295,8 @@ describe('motore', () => {
       { date: '2026-11-07', slot: 'OBI_M', idx: 0, who: 'alfa', source: 'manual' },
       { date: '2026-11-07', slot: 'OBI_P', idx: 0, who: 'bravo', source: 'manual' },
     ]);
-    const errs = ws.filter((w) => w.level === 'error').map((w) => [w.slot, w.personId]);
+    // Diviso a mano: avviso (una sostituzione voluta), non errore.
+    const errs = ws.filter((w) => w.message === 'Turno da 12h diviso tra due persone' && w.level === 'warn').map((w) => [w.slot, w.personId]);
     expect(errs).toEqual([
       ['OBI_M', 'alfa'],
       ['OBI_P', 'bravo'],
@@ -537,7 +538,7 @@ describe('motore', () => {
       { date: '2026-11-03', slot: 'PS_NOTTE', idx: 0, who: 'alfa', source: 'manual' },
       { date: '2026-11-03', slot: 'PS_NOTTE', idx: 1, who: 'alfa', source: 'manual' },
     ]);
-    expect(ws.find((w) => w.message === 'Più turni nello stesso giorno')?.level).toBe('warn');
+    expect(ws.find((w) => w.message.startsWith('Due turni nella stessa fascia (notte)'))?.level).toBe('error');
   });
 
   it('segnala assenze e doppi turni nelle modifiche manuali', () => {
@@ -549,12 +550,48 @@ describe('motore', () => {
       { date: '2026-11-04', slot: 'OBI_M', idx: 0, who: 'sierra', source: 'manual' },
     ]);
     const msgs = ws.filter((w) => w.level === 'error').map((w) => w.message);
-    expect(msgs).toContain('Non disponibile (indisponibile)');
-    expect(msgs).not.toContain('Più turni nello stesso giorno');
-    expect(ws.find((w) => w.personId === 'bravo' && w.message === 'Più turni nello stesso giorno')?.level).toBe('warn');
+    expect(msgs).toContain('Non disponibile: in Disponibilità ha segnato "X" (indisponibile)');
+    // PS alti M e OBI M alla stessa persona: stessa fascia, errore.
+    expect(ws.find((w) => w.personId === 'bravo' && w.slot === 'OBI_M')?.message).toBe('Due turni nella stessa fascia (mattina): OBI M e PS alti M');
+    // Una riga sola nell'elenco: stesso gruppo per le due celle.
+    expect(new Set(ws.filter((w) => w.personId === 'bravo' && w.message.startsWith('Due turni')).map((w) => w.group)).size).toBe(1);
+    expect(ws.find((w) => w.personId === 'bravo' && w.message.startsWith('Due turni'))?.level).toBe('error');
     // III anno in OBI scelto a mano (sostituzione): avviso, non errore.
     const iii = ws.find((w) => w.personId === 'sierra' && w.message.includes('III anno di norma non copre'));
     expect(iii?.level).toBe('warn');
+  });
+
+  it('più turni nello stesso giorno: stessa fascia errore, mattina e pomeriggio avviso leggero, notte e giorno avviso', () => {
+    const ws = validate(exampleInput(), [
+      // mercoledì: IV anno ai verdi la mattina e agli alti il pomeriggio
+      { date: '2026-11-04', slot: 'PS_VERDI_M', idx: 0, who: 'kilo', source: 'manual' },
+      { date: '2026-11-04', slot: 'PS_ALTI_P', idx: 1, who: 'kilo', source: 'manual' },
+      { date: '2026-11-04', slot: 'PEDU_M', idx: 0, who: 'lima', source: 'suggested' },
+      { date: '2026-11-04', slot: 'PS_NOTTE', idx: 0, who: 'lima', source: 'manual' },
+      // reparto tutto il giorno e PS pomeriggio: stessa fascia
+      { date: '2026-11-05', slot: 'ORTO', idx: 0, who: 'alfa', source: 'manual' },
+      { date: '2026-11-05', slot: 'PS_AUTO_P', idx: 0, who: 'alfa', source: 'manual' },
+    ]);
+    const of = (p: string) => ws.filter((w) => w.personId === p && !w.message.includes('di norma') && !w.message.startsWith('Smonto'));
+    expect(of('kilo').map((w) => [w.level, w.message])).toEqual([
+      ['info', 'Mattina e pomeriggio nello stesso giorno'],
+      ['info', 'Mattina e pomeriggio nello stesso giorno'],
+    ]);
+    expect(of('lima').every((w) => w.level === 'warn' && w.message === 'Notte e turno di giorno nello stesso giorno')).toBe(true);
+    expect(of('alfa').filter((w) => w.message.startsWith('Due turni nella stessa fascia (pomeriggio)')).length).toBe(2);
+    // Il 12h del weekend non si segnala.
+    const we = validate(exampleInput(), [
+      { date: '2026-11-07', slot: 'PEDU_M', idx: 0, who: 'kilo', source: 'manual' },
+      { date: '2026-11-07', slot: 'PEDU_P', idx: 0, who: 'kilo', source: 'manual' },
+    ]);
+    expect(we.filter((w) => w.personId === 'kilo')).toEqual([]);
+    // 12h diviso a mano tra due persone: avviso, una riga sola.
+    const split = validate(exampleInput(), [
+      { date: '2026-11-07', slot: 'PEDU_M', idx: 0, who: 'kilo', source: 'manual' },
+      { date: '2026-11-07', slot: 'PEDU_P', idx: 0, who: 'lima', source: 'suggested' },
+    ]).filter((w) => w.message === 'Turno da 12h diviso tra due persone');
+    expect(split.map((w) => w.level)).toEqual(['warn', 'warn']);
+    expect(split[0].group).toBe(split[1].group);
   });
 
   it('i nomi esterni scritti a mano si mostrano ma non si contano', () => {
